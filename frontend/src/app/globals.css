@@ -1,0 +1,113 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  --ink: #0b1f2a;
+  --ink-soft: #1f3a47;
+  --fog: #eef5f7;
+  --fog-deep: #d5e6eb;
+  --paper: #f7fbfc;
+  --accent: #0f766e;
+  --accent-bright: #14b8a6;
+  --warm: #ea580c;
+  --line: rgba(11, 31, 42, 0.12);
+  --danger: #b91c1c;
+  --shadow-soft: 0 18px 40px rgba(11, 31, 42, 0.08);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--ink);
+  background: var(--fog);
+  font-family: var(--font-outfit), sans-serif;
+}
+
+::selection {
+  background: rgba(20, 184, 166, 0.28);
+}
+
+.font-display {
+  font-family: var(--font-syne), sans-serif;
+}
+
+.atmosphere {
+  background:
+    radial-gradient(1200px 600px at 12% -10%, rgba(20, 184, 166, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 10%, rgba(234, 88, 12, 0.12), transparent 50%),
+    linear-gradient(160deg, #e8f4f6 0%, #f4f8f9 45%, #e7eef2 100%);
+}
+
+.map-plane {
+  background-image:
+    linear-gradient(rgba(11, 31, 42, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 31, 42, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, black 20%, transparent 75%);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-24px, 12px, 0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: rise-in 0.7s ease-out both;
+}
+
+.animate-rise-delay {
+  animation: rise-in 0.7s ease-out 0.12s both;
+}
+
+.animate-rise-delay-2 {
+  animation: rise-in 0.7s ease-out 0.24s both;
+}
+
+.animate-drift {
+  animation: drift 28s linear infinite alternate;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-delay,
+  .animate-rise-delay-2,
+  .animate-drift,
+  .animate-pulse-dot {
+    animation: none;
+  }
+}

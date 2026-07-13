@@ -1,0 +1,2 @@
+# Pin Python for Railway/Nixpacks fallback (Dockerfile is preferred)
+3.12.8
