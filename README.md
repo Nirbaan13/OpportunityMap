@@ -244,21 +244,24 @@ Copy each `.env.example` to `.env` (or `.env.local` for frontend) before running
 | 9 | Bookmarks | Phase 4, 7 | **Done** |
 | 10 | Deadline notifications (website inbox + email) | Phase 9 | **Done** |
 | 10b | Freemium paywall (₹299/year, Razorpay) | Phase 10 | **Done** |
-| 11 | Deployment (Vercel + Railway) | Phase 7+ | **Ready** (see docs/deployment.md) |
+| 11 | Deployment (Vercel + Neon free) | Phase 7+ | **Ready** (docs/deployment.md Option A) |
 | 12 | Additional scrapers (one source at a time) | Phase 5 | Planned |
 
 Each completed phase gets a short update in [docs/architecture.md](docs/architecture.md).
 
 ## Deployment Overview
 
-Detailed steps are in [docs/deployment.md](docs/deployment.md). Summary:
+**Free stack (Option A):** two Vercel projects + Neon Postgres + GitHub Actions.  
+Guide: [docs/deployment.md](docs/deployment.md).
 
-| Component | Platform | Root Directory |
-|-----------|----------|----------------|
+| Component | Free platform | Root |
+|-----------|---------------|------|
 | Frontend | Vercel | `frontend/` |
-| Backend | Railway or Render | `backend/` |
-| Database | Railway Postgres or Render Postgres | — |
-| Scraper | Railway cron or GitHub Actions | `scraper/` |
+| Backend API | Vercel (FastAPI) | `backend/` |
+| Database | Neon | — |
+| Scraper + reminders | GitHub Actions | schedule every 2–3 days |
+
+Optional: buy only a **domain** and attach it in Vercel.
 
 ## Scraper Strategy
 

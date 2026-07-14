@@ -3,12 +3,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def normalize_database_url(url: str) -> str:
-    """Railway/Render often provide postgres:// or postgresql:// without the psycopg driver."""
+    """Railway/Render/Neon often provide postgres:// without the psycopg driver."""
     value = url.strip()
     if value.startswith("postgres://"):
         value = "postgresql://" + value[len("postgres://") :]
     if value.startswith("postgresql://") and "+psycopg" not in value.split("://", 1)[0]:
         value = "postgresql+psycopg://" + value[len("postgresql://") :]
+    # Neon and most cloud Postgres require TLS
+    if "sslmode=" not in value and ("neon.tech" in value or "supabase.co" in value):
+        sep = "&" if "?" in value else "?"
+        value = f"{value}{sep}sslmode=require"
     return value
 
 

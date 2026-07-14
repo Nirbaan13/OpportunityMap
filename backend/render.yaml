@@ -1,0 +1,25 @@
+# Free-tier Render blueprint (optional)
+# Prefer Dashboard setup with Root Directory = backend (see docs/deployment.md).
+# This file documents the intended free Web Service shape.
+
+services:
+  - type: web
+    name: opportunitymap-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: PREMIUM_PRICE_INR
+        value: "299"

@@ -13,6 +13,7 @@ dependencies = [
     "bcrypt>=4.2.0",
     "python-jose[cryptography]>=3.3.0",
     "email-validator>=2.2.0",
+    "psycopg[binary]>=3.2.0",
 ]
 
 [project.optional-dependencies]
@@ -32,6 +33,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+# Vercel detects FastAPI here when Root Directory = backend
+[tool.vercel]
+entrypoint = "app.main:app"
 
 [tool.ruff]
 line-length = 100
