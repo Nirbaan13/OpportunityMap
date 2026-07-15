@@ -103,7 +103,7 @@ alembic upgrade head
 
 | Name | Value |
 |------|--------|
-| `NEXT_PUBLIC_API_URL` | API URL from Part 4 (**no trailing slash**) |
+| `NEXT_PUBLIC_API_URL` | API URL from Part 4 — **must include `https://`**, no trailing slash (e.g. `https://opportunitymap-api.vercel.app`) |
 
 4. **Deploy**.
 5. Copy site URL, e.g. `https://opportunitymap.vercel.app`

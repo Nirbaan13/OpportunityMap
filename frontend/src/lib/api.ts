@@ -31,7 +31,21 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   return qs ? `?${qs}` : "";
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+function resolveApiBaseUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").trim();
+  // Empty string is not nullish — without this, fetch becomes relative `/api/v1/...` on the frontend → 404
+  let base = raw || "http://localhost:8000";
+  base = base.replace(/\/+$/, "");
+  // If someone pasted the health/docs path or included /api/v1, strip it
+  base = base.replace(/\/api\/v1$/i, "");
+  // Host without scheme is treated as a path by fetch → site/opportunitymap-api.../api/v1 → 404
+  if (base && !/^https?:\/\//i.test(base)) {
+    base = `https://${base}`;
+  }
+  return base;
+}
+
+const API_URL = resolveApiBaseUrl();
 
 type RequestOptions = {
   method?: string;
@@ -53,10 +67,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
+  const url = `${API_URL}/api/v1${path}`;
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}/api/v1${path}`, {
+    response = await fetch(url, {
       method: options.method ?? "GET",
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -82,6 +97,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       }
     } catch {
       // keep default message
+    }
+    if (response.status === 404) {
+      message = `${message}. Check NEXT_PUBLIC_API_URL (called ${url})`;
     }
     throw new ApiError(response.status, message);
   }
