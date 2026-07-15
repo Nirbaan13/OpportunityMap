@@ -1,3 +1,4 @@
+import os
 import sys
 from collections.abc import Generator
 from pathlib import Path
@@ -10,13 +11,12 @@ BACKEND_ROOT = REPO_ROOT / "backend"
 if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
-from app.config import settings  # noqa: E402
-
-# Load backend settings from scraper .env when present.
+from app.config import normalize_database_url, settings  # noqa: E402
 from scraper.config import settings as scraper_settings  # noqa: E402
 
-if scraper_settings.database_url:
-    settings.database_url = scraper_settings.database_url
+# Prefer CI/secret env; always normalize for Neon (+psycopg, sslmode).
+_raw_url = os.environ.get("DATABASE_URL") or scraper_settings.database_url
+settings.database_url = normalize_database_url(_raw_url)
 
 from app.database import Base  # noqa: E402
 
