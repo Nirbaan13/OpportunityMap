@@ -212,7 +212,7 @@ export default function NotificationsPage() {
                       <button
                         type="button"
                         onClick={() => void onMarkRead(item)}
-                        className="text-sm font-medium text-ink-soft transition hover:text-accent"
+                        className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-line px-3 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent sm:border-0 sm:px-0"
                       >
                         Mark read
                       </button>

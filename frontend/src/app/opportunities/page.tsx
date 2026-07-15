@@ -44,9 +44,16 @@ export default function OpportunitiesPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const canUseMatches = Boolean(user && token && profile && user.is_premium);
   const canPersonalize = Boolean(user?.is_premium);
+  const activeFilterCount =
+    (opportunityType ? 1 : 0) +
+    (field ? 1 : 0) +
+    (openOnly ? 0 : 1) +
+    (mode === "browse" && profile && !eligibleForMe ? 1 : 0) +
+    (mode === "browse" && sort !== "deadline_asc" ? 1 : 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,8 +235,8 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <main className="atmosphere min-h-[calc(100vh-5rem)]">
-      <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10">
+    <main className="atmosphere min-h-[calc(100dvh-5rem)]">
+      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-10 sm:py-10">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
           Discover
         </p>
@@ -245,7 +252,7 @@ export default function OpportunitiesPage() {
           <button
             type="button"
             onClick={() => switchMode("browse")}
-            className={`rounded-md px-3.5 py-2 text-sm font-medium transition ${
+            className={`min-h-11 rounded-md px-3.5 py-2 text-sm font-medium transition ${
               mode === "browse"
                 ? "bg-ink text-paper"
                 : "text-ink-soft hover:bg-fog-deep/60 hover:text-ink"
@@ -260,7 +267,7 @@ export default function OpportunitiesPage() {
               switchMode("matches");
             }}
             disabled={!canUseMatches}
-            className={`rounded-md px-3.5 py-2 text-sm font-medium transition ${
+            className={`min-h-11 rounded-md px-3.5 py-2 text-sm font-medium transition ${
               mode === "matches"
                 ? "bg-ink text-paper"
                 : "text-ink-soft hover:bg-fog-deep/60 hover:text-ink disabled:cursor-not-allowed disabled:opacity-45"
@@ -310,134 +317,156 @@ export default function OpportunitiesPage() {
                 value={draftQ}
                 onChange={(e) => setDraftQ(e.target.value)}
                 placeholder="Search titles and descriptions"
-                className="w-full rounded-md border border-line bg-paper px-3 py-2.5 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="w-full rounded-md border border-line bg-paper px-3 py-2.5 text-base outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
               />
               <button
                 type="submit"
-                className="rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+                className="min-h-11 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-ink-soft"
               >
                 Search
               </button>
             </form>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          {/* Mobile: collapse dense filters; desktop: always visible */}
+          <div className="sm:hidden">
             <button
               type="button"
-              onClick={() => {
-                setOpportunityType("");
-                setPage(1);
-              }}
-              className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                opportunityType === ""
-                  ? "border-accent bg-accent/10 text-ink"
-                  : "border-line text-ink-soft hover:border-accent/40"
-              }`}
+              onClick={() => setFiltersOpen((v) => !v)}
+              className="flex min-h-11 w-full items-center justify-between rounded-md border border-line bg-paper px-3 text-sm font-medium text-ink"
+              aria-expanded={filtersOpen}
             >
-              All types
+              <span>
+                Filters
+                {activeFilterCount > 0 ? (
+                  <span className="ml-2 rounded-md bg-accent/15 px-1.5 py-0.5 text-xs font-semibold text-accent">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
+              </span>
+              <span className="text-ink-soft">{filtersOpen ? "Hide" : "Show"}</span>
             </button>
-            {OPPORTUNITY_TYPES.map((type) => (
+          </div>
+
+          <div className={`space-y-4 ${filtersOpen ? "block" : "hidden"} sm:block`}>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
               <button
-                key={type.value}
                 type="button"
                 onClick={() => {
-                  setOpportunityType(type.value);
+                  setOpportunityType("");
                   setPage(1);
                 }}
-                className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                  opportunityType === type.value
+                className={`shrink-0 rounded-md border px-3 py-2.5 text-sm transition sm:py-1.5 ${
+                  opportunityType === ""
                     ? "border-accent bg-accent/10 text-ink"
                     : "border-line text-ink-soft hover:border-accent/40"
                 }`}
               >
-                {type.label}
+                All types
               </button>
-            ))}
-          </div>
-
-          {mode === "browse" ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setField("");
-                  setPage(1);
-                }}
-                className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                  field === ""
-                    ? "border-warm/50 bg-warm/10 text-ink"
-                    : "border-line text-ink-soft hover:border-warm/40"
-                }`}
-              >
-                All fields
-              </button>
-              {fields.map((item) => (
+              {OPPORTUNITY_TYPES.map((type) => (
                 <button
-                  key={item.slug}
+                  key={type.value}
                   type="button"
                   onClick={() => {
-                    setField(item.slug);
+                    setOpportunityType(type.value);
                     setPage(1);
                   }}
-                  className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                    field === item.slug
+                  className={`shrink-0 rounded-md border px-3 py-2.5 text-sm transition sm:py-1.5 ${
+                    opportunityType === type.value
+                      ? "border-accent bg-accent/10 text-ink"
+                      : "border-line text-ink-soft hover:border-accent/40"
+                  }`}
+                >
+                  {type.label}
+                </button>
+              ))}
+            </div>
+
+            {mode === "browse" ? (
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setField("");
+                    setPage(1);
+                  }}
+                  className={`shrink-0 rounded-md border px-3 py-2.5 text-sm transition sm:py-1.5 ${
+                    field === ""
                       ? "border-warm/50 bg-warm/10 text-ink"
                       : "border-line text-ink-soft hover:border-warm/40"
                   }`}
                 >
-                  {item.name}
+                  All fields
                 </button>
-              ))}
-            </div>
-          ) : null}
+                {fields.map((item) => (
+                  <button
+                    key={item.slug}
+                    type="button"
+                    onClick={() => {
+                      setField(item.slug);
+                      setPage(1);
+                    }}
+                    className={`shrink-0 rounded-md border px-3 py-2.5 text-sm transition sm:py-1.5 ${
+                      field === item.slug
+                        ? "border-warm/50 bg-warm/10 text-ink"
+                        : "border-line text-ink-soft hover:border-warm/40"
+                    }`}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <label className="inline-flex items-center gap-2 text-ink-soft">
-              <input
-                type="checkbox"
-                className="accent-accent"
-                checked={openOnly}
-                onChange={(e) => {
-                  setOpenOnly(e.target.checked);
-                  setPage(1);
-                }}
-              />
-              Open deadlines only
-            </label>
-
-            {mode === "browse" && profile ? (
-              <label className="inline-flex items-center gap-2 text-ink-soft">
+            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
                 <input
                   type="checkbox"
-                  className="accent-accent"
-                  checked={eligibleForMe}
+                  className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
+                  checked={openOnly}
                   onChange={(e) => {
-                    setEligibleForMe(e.target.checked);
+                    setOpenOnly(e.target.checked);
                     setPage(1);
                   }}
                 />
-                Eligible for my grade/country
+                Open deadlines only
               </label>
-            ) : null}
 
-            {mode === "browse" ? (
-              <label className="inline-flex items-center gap-2 text-ink-soft">
-                Sort
-                <select
-                  value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value as OpportunitySort);
-                    setPage(1);
-                  }}
-                  className="rounded-md border border-line bg-paper px-2 py-1.5 outline-none focus:border-accent"
-                >
-                  <option value="deadline_asc">Deadline soonest</option>
-                  <option value="deadline_desc">Deadline latest</option>
-                  <option value="newest">Newest</option>
-                  <option value="title">Title</option>
-                </select>
-              </label>
-            ) : null}
+              {mode === "browse" && profile ? (
+                <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
+                    checked={eligibleForMe}
+                    onChange={(e) => {
+                      setEligibleForMe(e.target.checked);
+                      setPage(1);
+                    }}
+                  />
+                  Eligible for my grade/country
+                </label>
+              ) : null}
+
+              {mode === "browse" ? (
+                <label className="inline-flex min-h-11 items-center gap-2 text-ink-soft sm:min-h-0">
+                  Sort
+                  <select
+                    value={sort}
+                    onChange={(e) => {
+                      setSort(e.target.value as OpportunitySort);
+                      setPage(1);
+                    }}
+                    className="min-h-11 rounded-md border border-line bg-paper px-2 py-2 text-base outline-none focus:border-accent sm:min-h-0 sm:py-1.5 sm:text-sm"
+                  >
+                    <option value="deadline_asc">Deadline soonest</option>
+                    <option value="deadline_desc">Deadline latest</option>
+                    <option value="newest">Newest</option>
+                    <option value="title">Title</option>
+                  </select>
+                </label>
+              ) : null}
+            </div>
           </div>
         </section>
 
@@ -496,7 +525,7 @@ export default function OpportunitiesPage() {
                 type="button"
                 disabled={page <= 1 || loading}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-40"
+                className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-40"
               >
                 Previous
               </button>
@@ -507,7 +536,7 @@ export default function OpportunitiesPage() {
                 type="button"
                 disabled={page >= totalPages || loading}
                 onClick={() => setPage((p) => p + 1)}
-                className="rounded-md border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-40"
+                className="min-h-11 rounded-md border border-line px-3 py-2 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-40"
               >
                 Next
               </button>

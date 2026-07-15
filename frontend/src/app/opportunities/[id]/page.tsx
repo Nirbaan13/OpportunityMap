@@ -173,12 +173,12 @@ export default function OpportunityDetailPage() {
           </section>
         ) : null}
 
-        <div className="mt-10 flex flex-wrap items-center gap-3">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <a
             href={applyUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:w-auto"
           >
             Open application / source
           </a>
@@ -186,7 +186,7 @@ export default function OpportunityDetailPage() {
             href={opportunity.source_url}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex rounded-md border border-line px-5 py-3 text-sm font-semibold text-ink-soft transition hover:border-accent hover:text-accent"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 text-sm font-semibold text-ink-soft transition hover:border-accent hover:text-accent sm:w-auto"
           >
             Source page
           </a>
@@ -197,7 +197,7 @@ export default function OpportunityDetailPage() {
               setBookmarked(next);
               if (!next) setRemindMe(false);
             }}
-            className="inline-flex rounded-md border border-line px-5 py-3"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 sm:w-auto"
           />
           <RemindMeButton
             opportunityId={opportunity.id}
@@ -206,7 +206,7 @@ export default function OpportunityDetailPage() {
               setRemindMe(next);
               if (next) setBookmarked(true);
             }}
-            className="inline-flex rounded-md border border-line px-5 py-3"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 sm:w-auto"
           />
         </div>
         <p className="mt-3 text-xs text-ink-soft">

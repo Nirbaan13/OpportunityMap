@@ -36,10 +36,18 @@ export function OpportunityRow({
 }: OpportunityRowProps) {
   const href = `/opportunities/${opportunity.id}`;
   const applyUrl = opportunity.application_url || opportunity.source_url;
+  const countries = opportunity.eligible_countries?.length
+    ? opportunity.eligible_countries.join(", ")
+    : "Worldwide";
+  const gradeLabel = formatGradeRange(
+    opportunity.grade_min,
+    opportunity.grade_max,
+    opportunity.grade_eligibility,
+  );
 
   return (
     <article className="border-b border-line py-6 first:pt-0 last:border-b-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
             {formatOpportunityType(opportunity.opportunity_type)}
@@ -54,19 +62,36 @@ export function OpportunityRow({
               {opportunity.title}
             </Link>
           </h2>
-          <p className="mt-2 text-sm text-ink-soft">
+
+          {/* Desktop: compact middot line; mobile: stacked meta */}
+          <p className="mt-2 hidden text-sm text-ink-soft sm:block">
             Deadline {formatDeadline(opportunity.deadline_at)}
             <span className="mx-2 text-line">·</span>
-            {formatGradeRange(
-              opportunity.grade_min,
-              opportunity.grade_max,
-              opportunity.grade_eligibility,
-            )}
+            {gradeLabel}
             <span className="mx-2 text-line">·</span>
-            {opportunity.eligible_countries?.length
-              ? opportunity.eligible_countries.join(", ")
-              : "Worldwide"}
+            {countries}
           </p>
+          <dl className="mt-3 grid gap-2 text-sm text-ink-soft sm:hidden">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
+                Deadline
+              </dt>
+              <dd className="mt-0.5 text-ink">{formatDeadline(opportunity.deadline_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
+                Grades
+              </dt>
+              <dd className="mt-0.5 text-ink">{gradeLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
+                Countries
+              </dt>
+              <dd className="mt-0.5 text-ink">{countries}</dd>
+            </div>
+          </dl>
+
           {opportunity.fields.length > 0 ? (
             <p className="mt-2 text-sm text-ink-soft">
               {(sharedFields ?? opportunity.fields).map((field) => field.name).join(" · ")}
@@ -76,10 +101,11 @@ export function OpportunityRow({
             <p className="mt-2 text-xs text-ink-soft/90">{reasons.join(" · ")}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-col sm:items-stretch sm:gap-2">
           <Link
             href={href}
-            className="text-sm font-medium text-accent transition hover:underline"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-3 text-sm font-medium text-accent transition hover:border-accent sm:justify-end sm:border-0 sm:px-0 sm:hover:underline"
           >
             Details
           </Link>
@@ -87,7 +113,7 @@ export function OpportunityRow({
             href={applyUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-sm font-medium text-ink-soft transition hover:text-warm"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-3 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent sm:justify-end sm:border-0 sm:px-0"
           >
             Apply / source
           </a>
@@ -96,6 +122,7 @@ export function OpportunityRow({
               opportunityId={opportunity.id}
               bookmarked={bookmarked}
               onChange={onBookmarkChange}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3 sm:w-auto sm:justify-end sm:border-0 sm:px-0"
             />
           ) : null}
           {showRemindMe || onRemindMeChange ? (
@@ -103,6 +130,7 @@ export function OpportunityRow({
               opportunityId={opportunity.id}
               remindMe={remindMe}
               onChange={onRemindMeChange}
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3 sm:w-auto sm:justify-end sm:border-0 sm:px-0"
             />
           ) : null}
         </div>

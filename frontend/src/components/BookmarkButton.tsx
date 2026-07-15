@@ -28,7 +28,7 @@ export function BookmarkButton({
     return (
       <Link
         href="/login"
-        className={`text-sm font-medium text-ink-soft transition hover:text-accent ${className}`}
+        className={`inline-flex min-h-11 items-center text-sm font-medium text-ink-soft transition hover:text-accent ${className}`}
       >
         Log in to save
       </Link>
@@ -39,7 +39,7 @@ export function BookmarkButton({
     return (
       <Link
         href="/pricing"
-        className={`text-sm font-medium text-warm transition hover:text-accent ${className}`}
+        className={`inline-flex min-h-11 items-center text-sm font-medium text-warm transition hover:text-accent ${className}`}
       >
         Unlock to save
       </Link>
@@ -75,12 +75,12 @@ export function BookmarkButton({
   }
 
   return (
-    <span className="inline-flex flex-col items-start sm:items-end">
+    <span className="inline-flex w-full flex-col items-stretch sm:w-auto sm:items-end">
       <button
         type="button"
         onClick={() => void toggle()}
         disabled={pending}
-        className={`text-sm font-medium transition disabled:opacity-50 ${
+        className={`inline-flex min-h-11 items-center text-sm font-medium transition disabled:opacity-50 ${
           bookmarked
             ? "text-warm hover:text-ink"
             : "text-ink-soft hover:text-accent"
