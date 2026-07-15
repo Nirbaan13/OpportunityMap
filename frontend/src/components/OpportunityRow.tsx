@@ -44,10 +44,11 @@ export function OpportunityRow({
     opportunity.grade_max,
     opportunity.grade_eligibility,
   );
+  const showActions = showBookmark || onBookmarkChange || showRemindMe || onRemindMeChange;
 
   return (
-    <article className="border-b border-line py-6 first:pt-0 last:border-b-0">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+    <article className="border-b border-line py-5 first:pt-0 last:border-b-0 sm:py-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
             {formatOpportunityType(opportunity.opportunity_type)}
@@ -57,55 +58,36 @@ export function OpportunityRow({
               </span>
             ) : null}
           </p>
-          <h2 className="mt-1.5 font-display text-xl font-semibold tracking-tight text-ink">
+          <h2 className="mt-1.5 font-display text-lg font-semibold tracking-tight text-ink sm:text-xl">
             <Link href={href} className="transition hover:text-accent">
               {opportunity.title}
             </Link>
           </h2>
 
-          {/* Desktop: compact middot line; mobile: stacked meta */}
-          <p className="mt-2 hidden text-sm text-ink-soft sm:block">
-            Deadline {formatDeadline(opportunity.deadline_at)}
-            <span className="mx-2 text-line">·</span>
-            {gradeLabel}
-            <span className="mx-2 text-line">·</span>
+          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+            <span className="text-ink">Due {formatDeadline(opportunity.deadline_at)}</span>
+            <span className="mx-1.5 text-line">·</span>
+            <span>{gradeLabel}</span>
+          </p>
+          <p className="mt-1 line-clamp-2 text-sm text-ink-soft sm:line-clamp-none">
             {countries}
           </p>
-          <dl className="mt-3 grid gap-2 text-sm text-ink-soft sm:hidden">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
-                Deadline
-              </dt>
-              <dd className="mt-0.5 text-ink">{formatDeadline(opportunity.deadline_at)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
-                Grades
-              </dt>
-              <dd className="mt-0.5 text-ink">{gradeLabel}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
-                Countries
-              </dt>
-              <dd className="mt-0.5 text-ink">{countries}</dd>
-            </div>
-          </dl>
 
           {opportunity.fields.length > 0 ? (
-            <p className="mt-2 text-sm text-ink-soft">
+            <p className="mt-2 line-clamp-1 text-sm text-ink-soft sm:line-clamp-none">
               {(sharedFields ?? opportunity.fields).map((field) => field.name).join(" · ")}
             </p>
           ) : null}
           {reasons && reasons.length > 0 ? (
-            <p className="mt-2 text-xs text-ink-soft/90">{reasons.join(" · ")}</p>
+            <p className="mt-2 hidden text-xs text-ink-soft/90 sm:block">{reasons.join(" · ")}</p>
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-col sm:items-stretch sm:gap-2">
+        {/* Desktop side actions */}
+        <div className="hidden shrink-0 flex-col gap-2 sm:flex sm:items-end">
           <Link
             href={href}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-3 text-sm font-medium text-accent transition hover:border-accent sm:justify-end sm:border-0 sm:px-0 sm:hover:underline"
+            className="text-sm font-medium text-accent transition hover:underline"
           >
             Details
           </Link>
@@ -113,7 +95,7 @@ export function OpportunityRow({
             href={applyUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-3 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent sm:justify-end sm:border-0 sm:px-0"
+            className="text-sm font-medium text-ink-soft transition hover:text-warm"
           >
             Apply / source
           </a>
@@ -122,7 +104,6 @@ export function OpportunityRow({
               opportunityId={opportunity.id}
               bookmarked={bookmarked}
               onChange={onBookmarkChange}
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3 sm:w-auto sm:justify-end sm:border-0 sm:px-0"
             />
           ) : null}
           {showRemindMe || onRemindMeChange ? (
@@ -130,10 +111,47 @@ export function OpportunityRow({
               opportunityId={opportunity.id}
               remindMe={remindMe}
               onChange={onRemindMeChange}
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3 sm:w-auto sm:justify-end sm:border-0 sm:px-0"
             />
           ) : null}
         </div>
+      </div>
+
+      {/* Mobile actions: primary CTA + optional save/remind */}
+      <div className="mt-4 flex flex-col gap-2 sm:hidden">
+        <Link
+          href={href}
+          className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper"
+        >
+          View details
+        </Link>
+        <a
+          href={applyUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-4 text-sm font-medium text-ink-soft"
+        >
+          Apply / source
+        </a>
+        {showActions ? (
+          <div className="grid grid-cols-2 gap-2">
+            {showBookmark || onBookmarkChange ? (
+              <BookmarkButton
+                opportunityId={opportunity.id}
+                bookmarked={bookmarked}
+                onChange={onBookmarkChange}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+              />
+            ) : null}
+            {showRemindMe || onRemindMeChange ? (
+              <RemindMeButton
+                opportunityId={opportunity.id}
+                remindMe={remindMe}
+                onChange={onRemindMeChange}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </article>
   );

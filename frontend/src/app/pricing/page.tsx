@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/AuthProvider";
 import { PremiumPaywall } from "@/components/PremiumPaywall";
 
 export default function PricingPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
+  const router = useRouter();
 
   return (
-    <main className="atmosphere min-h-[calc(100vh-5rem)]">
-      <div className="mx-auto max-w-xl px-6 py-10 sm:px-10">
+    <main className="atmosphere min-h-[calc(100dvh-4rem)] sm:min-h-[calc(100vh-5rem)]">
+      <div className="mx-auto max-w-xl px-4 py-8 sm:px-10 sm:py-10">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
           Premium
         </p>
@@ -59,6 +61,19 @@ export default function PricingPage() {
             ← Keep browsing free
           </Link>
         </p>
+
+        {user ? (
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              router.push("/");
+            }}
+            className="mt-8 text-sm font-medium text-ink-soft transition hover:text-warm"
+          >
+            Log out
+          </button>
+        ) : null}
       </div>
     </main>
   );

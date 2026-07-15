@@ -42,7 +42,7 @@ type UserMenuProps = {
 };
 
 export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) {
-  const { user, token, logout } = useAuth();
+  const { user, token } = useAuth();
   const pathname = usePathname();
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -117,11 +117,20 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
     };
   }, [open, user, token]);
 
+  useEffect(() => {
+    if (!forceSheet || !open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [forceSheet, open]);
+
   if (!user) return null;
 
   const label = initialsFrom(user.email, stats.fullName);
   const panelClass = forceSheet
-    ? "fixed inset-x-0 bottom-0 top-[4.5rem] z-50 overflow-y-auto border-t border-line bg-paper px-5 py-5 shadow-[var(--shadow-soft)]"
+    ? "fixed inset-x-0 bottom-0 top-[3.5rem] z-50 overflow-y-auto overscroll-contain border-t border-line bg-paper px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[var(--shadow-soft)]"
     : "absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-lg border border-line bg-paper shadow-[var(--shadow-soft)]";
 
   return (
@@ -132,7 +141,7 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
         aria-controls={menuId}
         aria-haspopup="menu"
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-fog-deep/80 font-display text-sm font-bold text-ink transition hover:border-accent hover:bg-accent/10"
+        className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-line bg-fog-deep/80 font-display text-sm font-bold text-ink transition hover:border-accent hover:bg-accent/10 sm:h-11 sm:w-11"
         title="Your account"
       >
         {label}
@@ -152,11 +161,11 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
             />
           ) : null}
           <div id={menuId} role="menu" className={panelClass}>
-            <div className="border-b border-line px-4 py-3">
-              <p className="font-display text-sm font-semibold text-ink">
+            <div className="border-b border-line px-1 pb-3 sm:px-4 sm:py-3">
+              <p className="font-display text-base font-semibold text-ink sm:text-sm">
                 {stats.fullName || "Your account"}
               </p>
-              <p className="mt-0.5 truncate text-xs text-ink-soft">{user.email}</p>
+              <p className="mt-0.5 truncate text-sm text-ink-soft sm:text-xs">{user.email}</p>
               <p className="mt-2 text-xs font-medium text-accent">
                 {isPremium
                   ? user.premium_until
@@ -167,7 +176,7 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
             </div>
 
             {isPremium ? (
-              <div className="border-b border-line px-4 py-3">
+              <div className="border-b border-line px-1 py-3 sm:px-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
                   Your activity
                 </p>
@@ -175,21 +184,21 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
                   <p className="mt-2 text-sm text-ink-soft">Loading…</p>
                 ) : (
                   <ul className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <li className="rounded-md bg-fog px-2.5 py-2">
+                    <li className="rounded-md bg-fog px-2.5 py-2.5">
                       <p className="text-lg font-semibold tabular-nums text-ink">{stats.saved}</p>
                       <p className="text-xs text-ink-soft">Saved</p>
                     </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2">
+                    <li className="rounded-md bg-fog px-2.5 py-2.5">
                       <p className="text-lg font-semibold tabular-nums text-ink">
                         {stats.reminders}
                       </p>
                       <p className="text-xs text-ink-soft">Reminders</p>
                     </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2">
+                    <li className="rounded-md bg-fog px-2.5 py-2.5">
                       <p className="text-lg font-semibold tabular-nums text-ink">{stats.unread}</p>
                       <p className="text-xs text-ink-soft">Unread alerts</p>
                     </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2">
+                    <li className="rounded-md bg-fog px-2.5 py-2.5">
                       <p className="text-lg font-semibold tabular-nums text-ink">
                         {stats.completedActivities}
                       </p>
@@ -205,18 +214,17 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
                 </p>
               </div>
             ) : (
-              <div className="border-b border-line px-4 py-3">
+              <div className="border-b border-line px-1 py-3 sm:px-4">
                 <p className="text-sm text-ink-soft">
-                  Unlock premium to save opportunities, get reminders, and track your activity
-                  here.
+                  See the premium roadmap for saved opportunities, reminders, and matches.
                 </p>
                 <Link
                   href="/pricing"
                   role="menuitem"
-                  className="mt-3 inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+                  className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11 sm:w-auto"
                   onClick={() => setOpen(false)}
                 >
-                  Unlock ₹299/year
+                  View roadmap
                 </Link>
               </div>
             )}
@@ -249,24 +257,10 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
                 </>
               ) : (
                 <MenuLink href="/pricing" active={pathname.startsWith("/pricing")}>
-                  Unlock premium
+                  View roadmap
                 </MenuLink>
               )}
             </nav>
-
-            <div className="border-t border-line p-2">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false);
-                  logout();
-                }}
-                className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm font-medium text-ink-soft transition hover:bg-fog-deep/80 hover:text-warm"
-              >
-                Log out
-              </button>
-            </div>
           </div>
         </>
       ) : null}
@@ -287,7 +281,7 @@ function MenuLink({
     <Link
       href={href}
       role="menuitem"
-      className={`flex min-h-11 items-center gap-2 px-4 text-sm font-medium transition hover:bg-fog-deep/80 ${
+      className={`flex min-h-12 items-center gap-2 rounded-md px-3 text-base font-medium transition hover:bg-fog-deep/80 sm:min-h-11 sm:rounded-none sm:px-4 sm:text-sm ${
         active ? "text-accent" : "text-ink-soft hover:text-ink"
       }`}
     >

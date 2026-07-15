@@ -30,29 +30,29 @@ export default function Home() {
         </svg>
       </div>
 
-      <section className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] max-w-5xl flex-col justify-center px-6 pb-20 pt-10 sm:px-10">
-        <p className="animate-rise font-display text-5xl font-bold tracking-tight text-ink sm:text-7xl md:text-8xl">
+      <section className="relative z-10 mx-auto flex min-h-[calc(100dvh-4rem)] max-w-5xl flex-col justify-center px-4 pb-16 pt-8 sm:min-h-[calc(100vh-5rem)] sm:px-10 sm:pb-20 sm:pt-10">
+        <p className="animate-rise font-display text-4xl font-bold tracking-tight text-ink sm:text-7xl md:text-8xl">
           OpportunityMap
         </p>
-        <h1 className="animate-rise-delay mt-6 max-w-2xl font-display text-2xl font-semibold leading-snug text-ink-soft sm:text-3xl">
+        <h1 className="animate-rise-delay mt-5 max-w-2xl font-display text-xl font-semibold leading-snug text-ink-soft sm:mt-6 sm:text-3xl">
           Find olympiads, hackathons, and research programs you can actually apply to.
         </h1>
-        <p className="animate-rise-delay-2 mt-4 max-w-xl text-base text-ink-soft sm:text-lg">
+        <p className="animate-rise-delay-2 mt-3 max-w-xl text-sm leading-relaxed text-ink-soft sm:mt-4 sm:text-lg">
           Browse openings free. Unlock a yearly premium plan when you want a saved
           profile, personalized matches, and deadline alerts to your email.
         </p>
-        <div className="animate-rise-delay-2 mt-10 flex flex-wrap items-center gap-4">
+        <div className="animate-rise-delay-2 mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <Link
             href="/opportunities"
-            className="inline-flex items-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+            className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-0"
           >
             Browse opportunities
           </Link>
           <Link
             href="/pricing"
-            className="inline-flex items-center rounded-md border border-ink/20 bg-transparent px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+            className="inline-flex min-h-12 items-center justify-center rounded-md border border-ink/20 bg-transparent px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:min-h-0"
           >
-            Unlock premium
+            View roadmap
           </Link>
         </div>
       </section>

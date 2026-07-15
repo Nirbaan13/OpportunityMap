@@ -9,7 +9,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { api } from "@/lib/api";
 
 export function SiteHeader() {
-  const { user, token, loading, logout } = useAuth();
+  const { user, token, loading } = useAuth();
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [unread, setUnread] = useState(0);
@@ -51,15 +51,18 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`relative z-20 flex items-center justify-between gap-4 px-5 py-4 sm:px-10 sm:py-5 ${
+      className={`relative z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-5 ${
         isHome ? "text-ink" : "border-b border-line bg-paper/70 backdrop-blur-sm"
       }`}
     >
-      <Link href="/" className="font-display text-xl font-bold tracking-tight sm:text-2xl">
+      <Link
+        href="/"
+        className="min-w-0 truncate font-display text-lg font-bold tracking-tight sm:text-2xl"
+      >
         OpportunityMap
       </Link>
 
-      {/* Desktop: keep existing links + profile icon for activity / account */}
+      {/* Desktop nav */}
       <div className="hidden items-center gap-5 md:flex">
         <nav className="flex items-center gap-4 text-sm">
           <Link
@@ -107,10 +110,10 @@ export function SiteHeader() {
               <Link
                 href="/pricing"
                 className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                  pathname.startsWith("/pricing") ? "text-accent" : "text-warm"
+                  pathname.startsWith("/pricing") ? "text-accent" : "text-ink-soft"
                 }`}
               >
-                Unlock
+                View roadmap
               </Link>
             )
           ) : (
@@ -130,47 +133,47 @@ export function SiteHeader() {
             </>
           )}
         </nav>
+        {!loading && user ? <UserMenu /> : null}
+      </div>
+
+      {/* Mobile: one control — profile menu when signed in, guest menu otherwise */}
+      <div className="flex items-center gap-2 md:hidden">
         {!loading && user ? (
+          <UserMenu forceSheet />
+        ) : (
           <>
-            <UserMenu />
+            <Link
+              href="/login"
+              className="inline-flex h-10 items-center px-2 text-sm font-medium text-ink-soft"
+            >
+              Log in
+            </Link>
             <button
               type="button"
-              onClick={logout}
-              className="inline-flex min-h-10 items-center text-sm text-ink-soft transition hover:text-warm"
+              aria-expanded={mobileOpen}
+              aria-controls={mobileMenuId}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMobileOpen((v) => !v)}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line text-ink"
             >
-              Log out
+              {mobileOpen ? (
+                <span className="relative block h-3.5 w-3.5">
+                  <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 rotate-45 bg-current" />
+                  <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 -rotate-45 bg-current" />
+                </span>
+              ) : (
+                <span className="flex flex-col gap-1.5">
+                  <span className="block h-0.5 w-4 bg-current" />
+                  <span className="block h-0.5 w-4 bg-current" />
+                  <span className="block h-0.5 w-4 bg-current" />
+                </span>
+              )}
             </button>
           </>
-        ) : null}
+        )}
       </div>
 
-      {/* Mobile: logo + controls — no wrapping link row */}
-      <div className="flex items-center gap-2 md:hidden">
-        {!loading && user ? <UserMenu forceSheet /> : null}
-        <button
-          type="button"
-          aria-expanded={mobileOpen}
-          aria-controls={mobileMenuId}
-          aria-label={mobileOpen ? "Close menu" : "Open menu"}
-          onClick={() => setMobileOpen((v) => !v)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-line text-ink transition hover:border-accent"
-        >
-          {mobileOpen ? (
-            <span className="relative block h-3.5 w-3.5">
-              <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 rotate-45 bg-current" />
-              <span className="absolute left-0 top-1/2 h-0.5 w-full -translate-y-1/2 -rotate-45 bg-current" />
-            </span>
-          ) : (
-            <span className="flex flex-col gap-1.5">
-              <span className="block h-0.5 w-4 bg-current" />
-              <span className="block h-0.5 w-4 bg-current" />
-              <span className="block h-0.5 w-4 bg-current" />
-            </span>
-          )}
-        </button>
-      </div>
-
-      {mobileOpen ? (
+      {mobileOpen && !user ? (
         <>
           <button
             type="button"
@@ -180,122 +183,34 @@ export function SiteHeader() {
           />
           <div
             id={mobileMenuId}
-            className="fixed inset-x-0 top-[4.25rem] z-40 max-h-[calc(100dvh-4.25rem)] overflow-y-auto border-t border-line bg-paper px-5 py-4 shadow-[var(--shadow-soft)] md:hidden"
+            className="fixed inset-x-0 top-[3.5rem] z-40 border-t border-line bg-paper px-4 py-4 shadow-[var(--shadow-soft)] md:hidden"
           >
             <nav className="flex flex-col gap-1">
-              <MobileLink
+              <Link
                 href="/opportunities"
-                active={pathname.startsWith("/opportunities")}
-                onNavigate={() => setMobileOpen(false)}
+                onClick={() => setMobileOpen(false)}
+                className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
               >
                 Opportunities
-              </MobileLink>
-              {loading ? null : user ? (
-                <>
-                  {isPremium ? (
-                    <>
-                      <MobileLink
-                        href="/bookmarks"
-                        active={pathname.startsWith("/bookmarks")}
-                        onNavigate={() => setMobileOpen(false)}
-                      >
-                        Saved
-                      </MobileLink>
-                      <MobileLink
-                        href="/notifications"
-                        active={pathname.startsWith("/notifications")}
-                        onNavigate={() => setMobileOpen(false)}
-                      >
-                        Alerts
-                        {unread > 0 ? (
-                          <span className="ml-2 inline-flex min-w-[1.25rem] justify-center rounded-md bg-warm/20 px-1.5 text-xs font-semibold text-warm">
-                            {unread > 99 ? "99+" : unread}
-                          </span>
-                        ) : null}
-                      </MobileLink>
-                      <MobileLink
-                        href="/profile"
-                        active={pathname === "/profile"}
-                        onNavigate={() => setMobileOpen(false)}
-                      >
-                        Profile
-                      </MobileLink>
-                    </>
-                  ) : (
-                    <MobileLink
-                      href="/pricing"
-                      active={pathname.startsWith("/pricing")}
-                      onNavigate={() => setMobileOpen(false)}
-                      className="text-warm"
-                    >
-                      Unlock premium
-                    </MobileLink>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileOpen(false);
-                      logout();
-                    }}
-                    className="flex min-h-12 items-center rounded-md px-3 text-left text-base font-medium text-ink-soft transition hover:bg-fog-deep/80 hover:text-warm"
-                  >
-                    Log out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <MobileLink
-                    href="/login"
-                    active={pathname.startsWith("/login")}
-                    onNavigate={() => setMobileOpen(false)}
-                  >
-                    Log in
-                  </MobileLink>
-                  <Link
-                    href="/register"
-                    onClick={() => setMobileOpen(false)}
-                    className="mt-2 inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-base font-semibold text-paper transition hover:bg-ink-soft"
-                  >
-                    Get started
-                  </Link>
-                </>
-              )}
+              </Link>
+              <Link
+                href="/pricing"
+                onClick={() => setMobileOpen(false)}
+                className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
+              >
+                View roadmap
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-base font-semibold text-paper"
+              >
+                Get started
+              </Link>
             </nav>
-            {user ? (
-              <p className="mt-4 border-t border-line pt-4 text-sm text-ink-soft">
-                Signed in as <span className="font-medium text-ink">{user.email}</span>. Open
-                your profile icon for activity records (saved, reminders, alerts).
-              </p>
-            ) : null}
           </div>
         </>
       ) : null}
     </header>
-  );
-}
-
-function MobileLink({
-  href,
-  active,
-  onNavigate,
-  children,
-  className = "",
-}: {
-  href: string;
-  active: boolean;
-  onNavigate: () => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`flex min-h-12 items-center rounded-md px-3 text-base font-medium transition hover:bg-fog-deep/80 ${
-        active ? "text-accent" : "text-ink-soft hover:text-ink"
-      } ${className}`}
-    >
-      {children}
-    </Link>
   );
 }

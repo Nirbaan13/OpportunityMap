@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { ApiError, type Profile } from "@/types/api";
 
 export default function ProfilePage() {
-  const { user, token, loading, refreshUser } = useAuth();
+  const { user, token, loading, refreshUser, logout } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -72,6 +72,16 @@ export default function ProfilePage() {
           <div className="mt-8">
             <PremiumPaywall title="Unlock profile & recommendations" />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              router.push("/");
+            }}
+            className="mt-8 text-sm font-medium text-ink-soft transition hover:text-warm"
+          >
+            Log out
+          </button>
         </div>
       </main>
     );
@@ -117,6 +127,17 @@ export default function ProfilePage() {
             Back home
           </Link>
         </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            router.push("/");
+          }}
+          className="mt-8 text-sm font-medium text-ink-soft transition hover:text-warm"
+        >
+          Log out
+        </button>
       </div>
     </main>
   );
