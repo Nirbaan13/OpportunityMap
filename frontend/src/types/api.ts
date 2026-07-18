@@ -44,10 +44,19 @@ export type Profile = {
   interests: FieldOption[];
   completed_activities: ActivityOption[];
   planned_activities: ActivityOption[];
+  completed_opportunities: CompletedOpportunityBrief[];
   field_insights: FieldInsight[];
   insight_summary: string;
   created_at: string;
   updated_at: string;
+};
+
+export type CompletedOpportunityBrief = {
+  id: number;
+  title: string;
+  opportunity_type: string;
+  fields: FieldOption[];
+  completed_at: string | null;
 };
 
 export type ProfileWriteRequest = {
@@ -141,9 +150,13 @@ export type MatchListParams = {
   page_size?: number;
 };
 
+export type BookmarkStatus = "saved" | "completed";
+
 export type BookmarkItem = {
   opportunity: OpportunitySummary;
   remind_me: boolean;
+  status: BookmarkStatus;
+  completed_at: string | null;
   created_at: string;
 };
 
@@ -158,6 +171,7 @@ export type BookmarkListResponse = {
 export type BookmarkListParams = {
   page?: number;
   page_size?: number;
+  status?: BookmarkStatus;
 };
 
 export type NotificationType = "new_match" | "deadline_reminder";

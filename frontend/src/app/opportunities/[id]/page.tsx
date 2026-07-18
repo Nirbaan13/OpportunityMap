@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { MarkDoneButton } from "@/components/MarkDoneButton";
 import { RemindMeButton } from "@/components/RemindMeButton";
 import { api } from "@/lib/api";
 import {
@@ -22,6 +23,7 @@ export default function OpportunityDetailPage() {
   const [opportunity, setOpportunity] = useState<OpportunityDetail | null>(null);
   const [bookmarked, setBookmarked] = useState(false);
   const [remindMe, setRemindMe] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,6 +60,7 @@ export default function OpportunityDetailPage() {
     if (authLoading || !user || !token || !Number.isFinite(id) || id <= 0) {
       setBookmarked(false);
       setRemindMe(false);
+      setDone(false);
       return;
     }
 
@@ -68,11 +71,13 @@ export default function OpportunityDetailPage() {
         if (!cancelled) {
           setBookmarked(true);
           setRemindMe(bookmark.remind_me);
+          setDone(bookmark.status === "completed");
         }
       } catch (err) {
         if (!cancelled) {
           setBookmarked(false);
           setRemindMe(false);
+          setDone(false);
           if (!(err instanceof ApiError && err.status === 404)) {
             // ignore non-404; bookmark control still works
           }
@@ -195,7 +200,22 @@ export default function OpportunityDetailPage() {
             bookmarked={bookmarked}
             onChange={(next) => {
               setBookmarked(next);
-              if (!next) setRemindMe(false);
+              if (!next) {
+                setRemindMe(false);
+                setDone(false);
+              }
+            }}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 sm:w-auto"
+          />
+          <MarkDoneButton
+            opportunityId={opportunity.id}
+            done={done}
+            onChange={(next) => {
+              setDone(next);
+              if (next) {
+                setBookmarked(true);
+                setRemindMe(false);
+              }
             }}
             className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 sm:w-auto"
           />
@@ -210,9 +230,9 @@ export default function OpportunityDetailPage() {
           />
         </div>
         <p className="mt-3 text-xs text-ink-soft">
-          Remind me emails your registered address and adds a website alert 10 days
-          and 1 day before the deadline. Earlier (3 months / 30 days) alerts go
-          automatically to students with matching interests.
+          Mark done counts this opportunity toward your profile field progress. Remind me
+          emails your registered address and adds a website alert 10 days and 1 day before
+          the deadline.
         </p>
       </div>
     </main>

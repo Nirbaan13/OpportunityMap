@@ -8,18 +8,15 @@ import { useAuth } from "@/components/AuthProvider";
 import { PremiumPaywall } from "@/components/PremiumPaywall";
 import { ProfileForm } from "@/components/ProfileForm";
 import { api } from "@/lib/api";
-import { ApiError, type ActivityOption, type Profile } from "@/types/api";
+import { ApiError, type Profile } from "@/types/api";
 
 export default function ProfilePage() {
   const { user, token, loading, refreshUser, logout } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [catalog, setCatalog] = useState<ActivityOption[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [activityPending, setActivityPending] = useState<string | null>(null);
-  const [activityError, setActivityError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -35,16 +32,12 @@ export default function ProfilePage() {
     let cancelled = false;
     (async () => {
       try {
-        const [data, activities] = await Promise.all([
-          api.getProfile(token).catch((err) => {
-            if (err instanceof ApiError && err.status === 404) return null;
-            throw err;
-          }),
-          api.listActivities().catch(() => [] as ActivityOption[]),
-        ]);
+        const data = await api.getProfile(token).catch((err) => {
+          if (err instanceof ApiError && err.status === 404) return null;
+          throw err;
+        });
         if (!cancelled) {
           setProfile(data);
-          setCatalog(activities);
           setEditing(!data);
         }
       } catch (err) {
@@ -60,39 +53,6 @@ export default function ProfilePage() {
       cancelled = true;
     };
   }, [loading, user, token, router]);
-
-  async function updateActivityStatus(slug: string, next: "none" | "planned" | "completed") {
-    if (!token || !profile) return;
-    setActivityPending(slug);
-    setActivityError(null);
-
-    const completed = new Set(profile.completed_activities.map((item) => item.slug));
-    const planned = new Set(profile.planned_activities.map((item) => item.slug));
-    completed.delete(slug);
-    planned.delete(slug);
-    if (next === "completed") completed.add(slug);
-    if (next === "planned") planned.add(slug);
-
-    try {
-      const saved = await api.updateProfile(token, {
-        full_name: profile.full_name,
-        location: profile.location,
-        grade_level: profile.grade_level,
-        country_code: profile.country_code,
-        research_experience: profile.research_experience,
-        olympiad_experience: profile.olympiad_experience,
-        interest_slugs: profile.interests.map((item) => item.slug),
-        completed_activity_slugs: [...completed],
-        planned_activity_slugs: [...planned],
-      });
-      setProfile(saved);
-      await refreshUser();
-    } catch (err) {
-      setActivityError(err instanceof ApiError ? err.message : "Could not update activity.");
-    } finally {
-      setActivityPending(null);
-    }
-  }
 
   if (loading || !ready || !token) {
     return (
@@ -112,7 +72,7 @@ export default function ProfilePage() {
           <h1 className="mt-3 font-display text-3xl font-bold text-ink">Profile is premium</h1>
           <p className="mt-3 text-ink-soft">
             You can browse opportunities free. Unlock premium to save your grade, interests,
-            and experience for recommendations and alerts.
+            and mark opportunities done for field progress.
           </p>
           <div className="mt-8">
             <PremiumPaywall title="Unlock profile & recommendations" />
@@ -143,8 +103,8 @@ export default function ProfilePage() {
             {profile ? "Edit profile" : "Build your student profile"}
           </h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            Grade, country, interests, and activities drive eligibility filters and match
-            scoring.
+            Grade, country, and interests drive eligibility and matches. Mark individual
+            opportunities as done from the Opportunities page to track field progress.
           </p>
 
           {loadError ? <p className="mt-6 text-sm text-danger">{loadError}</p> : null}
@@ -166,9 +126,6 @@ export default function ProfilePage() {
     );
   }
 
-  const completedSlugs = new Set(profile.completed_activities.map((item) => item.slug));
-  const plannedSlugs = new Set(profile.planned_activities.map((item) => item.slug));
-
   return (
     <main className="atmosphere min-h-[calc(100dvh-4rem)]">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-10 sm:py-12">
@@ -184,7 +141,7 @@ export default function ProfilePage() {
         <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
 
         <section className="mt-10 border-t border-line pt-8">
-          <h2 className="font-display text-xl font-semibold text-ink">Your activity map</h2>
+          <h2 className="font-display text-xl font-semibold text-ink">Your field progress</h2>
           <p className="mt-3 text-ink-soft leading-relaxed">{profile.insight_summary}</p>
 
           {profile.field_insights.length > 0 ? (
@@ -196,8 +153,11 @@ export default function ProfilePage() {
                 >
                   <p className="font-medium text-ink">{insight.field.name}</p>
                   <p className="mt-1 text-sm text-ink-soft">
-                    {insight.completed_count} done
-                    {insight.planned_count > 0 ? ` · ${insight.planned_count} saved` : ""}
+                    {insight.completed_count} opportunit
+                    {insight.completed_count === 1 ? "y" : "ies"} done
+                    {insight.planned_count > 0
+                      ? ` · ${insight.planned_count} saved`
+                      : ""}
                   </p>
                   <p
                     className={`mt-2 text-xs font-semibold uppercase tracking-wide ${
@@ -221,102 +181,37 @@ export default function ProfilePage() {
         </section>
 
         <section className="mt-10 border-t border-line pt-8">
-          <h2 className="font-display text-xl font-semibold text-ink">Completed</h2>
-          {profile.completed_activities.length === 0 ? (
+          <h2 className="font-display text-xl font-semibold text-ink">
+            Opportunities you marked done
+          </h2>
+          {(profile.completed_opportunities ?? []).length === 0 ? (
             <p className="mt-3 text-sm text-ink-soft">
-              Nothing marked done yet. Use Mark done on an activity below.
+              Nothing marked done yet. Open{" "}
+              <Link href="/opportunities" className="text-accent hover:underline">
+                Opportunities
+              </Link>{" "}
+              and tap <span className="font-medium text-ink">Mark done</span> on listings you
+              finished.
             </p>
           ) : (
             <ul className="mt-4 space-y-2">
-              {profile.completed_activities.map((item) => (
-                <li key={item.slug} className="rounded-md bg-warm/10 px-3 py-2.5 text-sm text-ink">
-                  {item.name}
+              {profile.completed_opportunities.map((item) => (
+                <li key={item.id}>
+                  <Link
+                    href={`/opportunities/${item.id}`}
+                    className="block rounded-md bg-warm/10 px-3 py-2.5 text-sm text-ink transition hover:bg-warm/15"
+                  >
+                    <span className="font-medium">{item.title}</span>
+                    {item.fields.length > 0 ? (
+                      <span className="mt-1 block text-xs text-ink-soft">
+                        {item.fields.map((f) => f.name).join(" · ")}
+                      </span>
+                    ) : null}
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
-        </section>
-
-        <section className="mt-8">
-          <h2 className="font-display text-xl font-semibold text-ink">Saved for later</h2>
-          {profile.planned_activities.length === 0 ? (
-            <p className="mt-3 text-sm text-ink-soft">
-              No planned activities yet. Save ones you want to do next.
-            </p>
-          ) : (
-            <ul className="mt-4 space-y-2">
-              {profile.planned_activities.map((item) => (
-                <li
-                  key={item.slug}
-                  className="rounded-md bg-accent/10 px-3 py-2.5 text-sm text-ink"
-                >
-                  {item.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="mt-10 border-t border-line pt-8">
-          <h2 className="font-display text-xl font-semibold text-ink">All activities</h2>
-          <p className="mt-2 text-sm text-ink-soft">
-            Save for later if you plan to do it. Mark done when you have completed it.
-          </p>
-          {activityError ? <p className="mt-3 text-sm text-danger">{activityError}</p> : null}
-          <div className="mt-4 space-y-3">
-            {catalog.map((activity) => {
-              const status = completedSlugs.has(activity.slug)
-                ? "completed"
-                : plannedSlugs.has(activity.slug)
-                  ? "planned"
-                  : "none";
-              const busy = activityPending === activity.slug;
-              return (
-                <div
-                  key={activity.slug}
-                  className="flex flex-col gap-3 rounded-md border border-line bg-paper px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="text-sm font-medium text-ink">{activity.name}</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void updateActivityStatus(
-                          activity.slug,
-                          status === "planned" ? "none" : "planned",
-                        )
-                      }
-                      className={`min-h-10 rounded-md border px-3 text-sm font-medium transition disabled:opacity-50 ${
-                        status === "planned"
-                          ? "border-accent bg-accent/10 text-ink"
-                          : "border-line text-ink-soft hover:border-accent/40"
-                      }`}
-                    >
-                      {status === "planned" ? "Saved for later" : "Save for later"}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        void updateActivityStatus(
-                          activity.slug,
-                          status === "completed" ? "none" : "completed",
-                        )
-                      }
-                      className={`min-h-10 rounded-md border px-3 text-sm font-medium transition disabled:opacity-50 ${
-                        status === "completed"
-                          ? "border-warm/60 bg-warm/10 text-ink"
-                          : "border-line text-ink-soft hover:border-warm/40"
-                      }`}
-                    >
-                      {status === "completed" ? "Marked done" : "Mark done"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </section>
 
         {profile.interests.length > 0 ? (
@@ -348,8 +243,7 @@ export default function ProfilePage() {
             <Link href="/opportunities" className="text-accent hover:underline">
               Opportunities
             </Link>{" "}
-            and switch to <span className="font-medium text-ink">For you</span> for ranked
-            matches.
+            to browse, save, and mark listings done.
           </p>
           <button
             type="button"

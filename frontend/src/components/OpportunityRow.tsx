@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { MarkDoneButton } from "@/components/MarkDoneButton";
 import { RemindMeButton } from "@/components/RemindMeButton";
 import {
   formatDeadline,
@@ -16,10 +17,13 @@ type OpportunityRowProps = {
   reasons?: string[];
   bookmarked?: boolean;
   remindMe?: boolean;
+  done?: boolean;
   onBookmarkChange?: (bookmarked: boolean) => void;
   onRemindMeChange?: (remindMe: boolean) => void;
+  onDoneChange?: (done: boolean) => void;
   showBookmark?: boolean;
   showRemindMe?: boolean;
+  showDone?: boolean;
 };
 
 export function OpportunityRow({
@@ -29,10 +33,13 @@ export function OpportunityRow({
   reasons,
   bookmarked = false,
   remindMe = false,
+  done = false,
   onBookmarkChange,
   onRemindMeChange,
+  onDoneChange,
   showBookmark = false,
   showRemindMe = false,
+  showDone = false,
 }: OpportunityRowProps) {
   const href = `/opportunities/${opportunity.id}`;
   const applyUrl = opportunity.application_url || opportunity.source_url;
@@ -44,7 +51,13 @@ export function OpportunityRow({
     opportunity.grade_max,
     opportunity.grade_eligibility,
   );
-  const showActions = showBookmark || onBookmarkChange || showRemindMe || onRemindMeChange;
+  const showActions =
+    showBookmark ||
+    onBookmarkChange ||
+    showRemindMe ||
+    onRemindMeChange ||
+    showDone ||
+    onDoneChange;
 
   return (
     <article className="border-b border-line py-5 first:pt-0 last:border-b-0 sm:py-6">
@@ -55,6 +68,11 @@ export function OpportunityRow({
             {score != null ? (
               <span className="ml-3 font-medium normal-case tracking-normal text-warm">
                 Match {score}
+              </span>
+            ) : null}
+            {done ? (
+              <span className="ml-3 font-medium normal-case tracking-normal text-warm">
+                Done
               </span>
             ) : null}
           </p>
@@ -83,7 +101,6 @@ export function OpportunityRow({
           ) : null}
         </div>
 
-        {/* Desktop side actions */}
         <div className="hidden shrink-0 flex-col gap-2 sm:flex sm:items-end">
           <Link
             href={href}
@@ -106,6 +123,13 @@ export function OpportunityRow({
               onChange={onBookmarkChange}
             />
           ) : null}
+          {showDone || onDoneChange ? (
+            <MarkDoneButton
+              opportunityId={opportunity.id}
+              done={done}
+              onChange={onDoneChange}
+            />
+          ) : null}
           {showRemindMe || onRemindMeChange ? (
             <RemindMeButton
               opportunityId={opportunity.id}
@@ -116,7 +140,6 @@ export function OpportunityRow({
         </div>
       </div>
 
-      {/* Mobile actions: primary CTA + optional save/remind */}
       <div className="mt-4 flex flex-col gap-2 sm:hidden">
         <Link
           href={href}
@@ -142,12 +165,20 @@ export function OpportunityRow({
                 className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
               />
             ) : null}
+            {showDone || onDoneChange ? (
+              <MarkDoneButton
+                opportunityId={opportunity.id}
+                done={done}
+                onChange={onDoneChange}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+              />
+            ) : null}
             {showRemindMe || onRemindMeChange ? (
               <RemindMeButton
                 opportunityId={opportunity.id}
                 remindMe={remindMe}
                 onChange={onRemindMeChange}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+                className="col-span-2 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
               />
             ) : null}
           </div>

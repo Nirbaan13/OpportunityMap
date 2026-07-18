@@ -22,8 +22,16 @@ class ActivityOption(BaseModel):
 class FieldInsight(BaseModel):
     field: FieldOption
     completed_count: int
-    planned_count: int
+    planned_count: int  # saved-for-later opportunities in this field
     status: str  # strong | ok | short
+
+
+class CompletedOpportunityBrief(BaseModel):
+    id: int
+    title: str
+    opportunity_type: str
+    fields: list[FieldOption]
+    completed_at: datetime | None
 
 
 class ProfileWriteRequest(BaseModel):
@@ -70,6 +78,7 @@ class ProfileResponse(BaseModel):
     interests: list[FieldOption]
     completed_activities: list[ActivityOption]
     planned_activities: list[ActivityOption]
+    completed_opportunities: list[CompletedOpportunityBrief]
     field_insights: list[FieldInsight]
     insight_summary: str
     created_at: datetime

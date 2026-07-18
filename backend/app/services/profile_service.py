@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Activity, Field, Profile, User
+from app.models.bookmark import Bookmark
 from app.models.profile import ProfileActivity
 from app.schemas.profile import (
     ActivityOption,
@@ -10,7 +11,7 @@ from app.schemas.profile import (
     FieldOption,
     ProfileWriteRequest,
 )
-from app.services.activity_field_map import ACTIVITY_RELATED_FIELDS
+from app.services import bookmark_service
 
 
 def _load_profile_query(user_id: int):
@@ -81,21 +82,28 @@ def _set_activity_links(
         )
 
 
-def build_field_insights(profile: Profile) -> list[FieldInsight]:
-    completed = profile.completed_activity_list
-    planned = profile.planned_activity_list
+def build_field_insights(
+    profile: Profile,
+    *,
+    completed_bookmarks: list[Bookmark],
+    saved_bookmarks: list[Bookmark] | None = None,
+) -> list[FieldInsight]:
+    """Count completed (and saved) opportunities per interest field."""
+    saved_bookmarks = saved_bookmarks or []
     insights: list[FieldInsight] = []
 
     for field in sorted(profile.fields, key=lambda item: item.name.lower()):
         completed_count = sum(
             1
-            for activity in completed
-            if field.slug in ACTIVITY_RELATED_FIELDS.get(activity.slug, [])
+            for bookmark in completed_bookmarks
+            if bookmark.opportunity
+            and any(f.slug == field.slug for f in bookmark.opportunity.fields)
         )
         planned_count = sum(
             1
-            for activity in planned
-            if field.slug in ACTIVITY_RELATED_FIELDS.get(activity.slug, [])
+            for bookmark in saved_bookmarks
+            if bookmark.opportunity
+            and any(f.slug == field.slug for f in bookmark.opportunity.fields)
         )
         if completed_count >= 2:
             status_label = "strong"
@@ -116,7 +124,7 @@ def build_field_insights(profile: Profile) -> list[FieldInsight]:
 
 def build_insight_summary(insights: list[FieldInsight]) -> str:
     if not insights:
-        return "Add interests to see how your activities cover each field."
+        return "Add interests to see how completed opportunities cover each field."
 
     strong_or_ok = [item for item in insights if item.completed_count > 0]
     short = [item for item in insights if item.status == "short"]
@@ -126,9 +134,12 @@ def build_insight_summary(insights: list[FieldInsight]) -> str:
         coverage = ", ".join(
             f"{item.completed_count} in {item.field.name}" for item in strong_or_ok
         )
-        parts.append(f"You've completed {coverage}.")
+        parts.append(f"You've completed {coverage} opportunit(ies).")
     else:
-        parts.append("You haven't marked any completed activities yet for your interests.")
+        parts.append(
+            "You haven't marked any opportunities done yet for your interests. "
+            "Open an opportunity and tap Mark done."
+        )
 
     if short:
         if len(short) == 1:

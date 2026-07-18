@@ -102,7 +102,8 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
           if (profile) {
             next.profileReady = true;
             next.fullName = profile.full_name;
-            next.completedActivities = profile.completed_activities.length;
+            next.completedActivities = profile.completed_opportunities?.length
+              ?? profile.completed_activities.length;
           }
         }
       } finally {

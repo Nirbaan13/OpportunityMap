@@ -6,8 +6,6 @@ import { SelectField, TextArea, TextField } from "@/components/FormFields";
 import { api } from "@/lib/api";
 import { ApiError, type ActivityOption, type FieldOption, type Profile } from "@/types/api";
 
-type ActivityStatus = "none" | "planned" | "completed";
-
 type ProfileFormProps = {
   token: string;
   existing: Profile | null;
@@ -27,12 +25,9 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
   const [interestSlugs, setInterestSlugs] = useState<string[]>(
     existing?.interests.map((f) => f.slug) ?? [],
   );
-  const [activityStatus, setActivityStatus] = useState<Record<string, ActivityStatus>>(() => {
-    const next: Record<string, ActivityStatus> = {};
-    for (const item of existing?.completed_activities ?? []) next[item.slug] = "completed";
-    for (const item of existing?.planned_activities ?? []) next[item.slug] = "planned";
-    return next;
-  });
+  const [activitySlugs, setActivitySlugs] = useState<string[]>(
+    existing?.completed_activities.map((a) => a.slug) ?? [],
+  );
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,13 +64,10 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
     );
   }
 
-  function setStatus(slug: string, status: ActivityStatus) {
-    setActivityStatus((current) => {
-      const next = { ...current };
-      if (status === "none") delete next[slug];
-      else next[slug] = status;
-      return next;
-    });
+  function toggleActivity(slug: string) {
+    setActivitySlugs((current) =>
+      current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug],
+    );
   }
 
   async function onSubmit(event: FormEvent) {
@@ -88,13 +80,6 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
       return;
     }
 
-    const completed_activity_slugs = Object.entries(activityStatus)
-      .filter(([, status]) => status === "completed")
-      .map(([slug]) => slug);
-    const planned_activity_slugs = Object.entries(activityStatus)
-      .filter(([, status]) => status === "planned")
-      .map(([slug]) => slug);
-
     const payload = {
       full_name: fullName.trim(),
       location: location.trim(),
@@ -103,8 +88,8 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
       research_experience: research.trim() || null,
       olympiad_experience: olympiad.trim() || null,
       interest_slugs: interestSlugs,
-      completed_activity_slugs,
-      planned_activity_slugs,
+      completed_activity_slugs: activitySlugs,
+      planned_activity_slugs: [] as string[],
     };
 
     setSaving(true);
@@ -197,48 +182,32 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
       </section>
 
       <section>
-        <h2 className="font-display text-lg font-semibold text-ink">Activities</h2>
+        <h2 className="font-display text-lg font-semibold text-ink">Experience types</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Save activities you plan to do, or mark ones you have already completed.
+          Optional — types of programs you have experience with (helps matching). To track
+          specific listings you finished, use <span className="font-medium text-ink">Mark done</span>{" "}
+          on each opportunity.
         </p>
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {activities.map((activity) => {
-            const status = activityStatus[activity.slug] ?? "none";
+            const checked = activitySlugs.includes(activity.slug);
             return (
-              <div
+              <label
                 key={activity.slug}
-                className="flex flex-col gap-3 rounded-md border border-line bg-paper px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition ${
+                  checked
+                    ? "border-warm/60 bg-warm/10 text-ink"
+                    : "border-line bg-paper text-ink-soft hover:border-warm/40"
+                }`}
               >
-                <p className="text-sm font-medium text-ink">{activity.name}</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setStatus(activity.slug, status === "planned" ? "none" : "planned")
-                    }
-                    className={`min-h-10 rounded-md border px-3 text-sm font-medium transition ${
-                      status === "planned"
-                        ? "border-accent bg-accent/10 text-ink"
-                        : "border-line text-ink-soft hover:border-accent/40"
-                    }`}
-                  >
-                    {status === "planned" ? "Saved for later" : "Save for later"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setStatus(activity.slug, status === "completed" ? "none" : "completed")
-                    }
-                    className={`min-h-10 rounded-md border px-3 text-sm font-medium transition ${
-                      status === "completed"
-                        ? "border-warm/60 bg-warm/10 text-ink"
-                        : "border-line text-ink-soft hover:border-warm/40"
-                    }`}
-                  >
-                    {status === "completed" ? "Marked done" : "Mark done"}
-                  </button>
-                </div>
-              </div>
+                <input
+                  type="checkbox"
+                  className="accent-warm"
+                  checked={checked}
+                  onChange={() => toggleActivity(activity.slug)}
+                />
+                {activity.name}
+              </label>
             );
           })}
         </div>

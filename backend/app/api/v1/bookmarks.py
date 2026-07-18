@@ -11,6 +11,7 @@ from app.schemas.bookmark import (
     BookmarkCreate,
     BookmarkItem,
     BookmarkListResponse,
+    BookmarkStatus,
     BookmarkUpdate,
 )
 from app.services import bookmark_service
@@ -22,6 +23,8 @@ def _to_item(bookmark) -> BookmarkItem:
     return BookmarkItem(
         opportunity=_to_summary(bookmark.opportunity),
         remind_me=bookmark.remind_me,
+        status=bookmark.status,  # type: ignore[arg-type]
+        completed_at=bookmark.completed_at,
         created_at=bookmark.created_at,
     )
 
@@ -30,12 +33,21 @@ def _to_item(bookmark) -> BookmarkItem:
 def list_my_bookmarks(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    status_filter: BookmarkStatus | None = Query(
+        default=None,
+        alias="status",
+        description="Filter by saved or completed",
+    ),
     current_user: User = Depends(require_premium),
     db: Session = Depends(get_db),
 ) -> BookmarkListResponse:
-    """Saved opportunities for the logged-in student."""
+    """Saved / completed opportunities for the logged-in student."""
     rows, total = bookmark_service.list_bookmarks(
-        db, current_user, page=page, page_size=page_size
+        db,
+        current_user,
+        page=page,
+        page_size=page_size,
+        status_filter=status_filter,
     )
     total_pages = ceil(total / page_size) if total else 0
     return BookmarkListResponse(
@@ -58,6 +70,7 @@ def create_bookmark(
         current_user,
         payload.opportunity_id,
         remind_me=payload.remind_me,
+        status_value=payload.status,
     )
     return _to_item(bookmark)
 
@@ -79,10 +92,18 @@ def update_bookmark(
     current_user: User = Depends(require_premium),
     db: Session = Depends(get_db),
 ) -> BookmarkItem:
-    """Set Remind me (creates a saved bookmark if turning on and none exists)."""
-    bookmark = bookmark_service.set_remind_me(
-        db, current_user, opportunity_id, payload.remind_me
-    )
+    """Update Remind me and/or saved vs completed status."""
+    bookmark = None
+    if payload.status is not None:
+        bookmark = bookmark_service.set_status(
+            db, current_user, opportunity_id, payload.status
+        )
+    if payload.remind_me is not None:
+        bookmark = bookmark_service.set_remind_me(
+            db, current_user, opportunity_id, payload.remind_me
+        )
+    if bookmark is None:
+        bookmark = bookmark_service.get_bookmark(db, current_user, opportunity_id)
     return _to_item(bookmark)
 
 

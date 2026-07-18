@@ -196,6 +196,7 @@ export const api = {
       `/bookmarks${toQuery({
         page: params.page,
         page_size: params.page_size,
+        status: params.status,
       })}`,
       { token },
     );
@@ -209,7 +210,7 @@ export const api = {
     return request<BookmarkItem>("/bookmarks", {
       method: "POST",
       token,
-      body: { opportunity_id: opportunityId, remind_me: remindMe },
+      body: { opportunity_id: opportunityId, remind_me: remindMe, status: "saved" },
     });
   },
 
@@ -218,6 +219,14 @@ export const api = {
       method: "PATCH",
       token,
       body: { remind_me: remindMe },
+    });
+  },
+
+  setBookmarkStatus(token: string, opportunityId: number, status: "saved" | "completed") {
+    return request<BookmarkItem>(`/bookmarks/${opportunityId}`, {
+      method: "PATCH",
+      token,
+      body: { status },
     });
   },
 

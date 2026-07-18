@@ -36,7 +36,7 @@ export default function BookmarksPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await api.listBookmarks(token, { page, page_size: PAGE_SIZE });
+        const data = await api.listBookmarks(token, { page, page_size: PAGE_SIZE, status: "saved" });
         if (cancelled) return;
         setItems(data.items);
         setTotal(data.total);

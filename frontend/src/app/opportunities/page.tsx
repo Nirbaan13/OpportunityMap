@@ -40,6 +40,7 @@ export default function OpportunitiesPage() {
   const [matchItems, setMatchItems] = useState<MatchItem[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [remindMeIds, setRemindMeIds] = useState<Set<number>>(new Set());
+  const [doneIds, setDoneIds] = useState<Set<number>>(new Set());
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -92,6 +93,7 @@ export default function OpportunitiesPage() {
     if (authLoading || !token || !user?.is_premium) {
       setBookmarkedIds(new Set());
       setRemindMeIds(new Set());
+      setDoneIds(new Set());
       return;
     }
     let cancelled = false;
@@ -105,10 +107,18 @@ export default function OpportunitiesPage() {
             data.items.filter((item) => item.remind_me).map((item) => item.opportunity.id),
           ),
         );
+        setDoneIds(
+          new Set(
+            data.items
+              .filter((item) => item.status === "completed")
+              .map((item) => item.opportunity.id),
+          ),
+        );
       } catch {
         if (!cancelled) {
           setBookmarkedIds(new Set());
           setRemindMeIds(new Set());
+          setDoneIds(new Set());
         }
       }
     })();
@@ -130,6 +140,11 @@ export default function OpportunitiesPage() {
         next.delete(opportunityId);
         return next;
       });
+      setDoneIds((prev) => {
+        const next = new Set(prev);
+        next.delete(opportunityId);
+        return next;
+      });
     }
   }
 
@@ -142,6 +157,23 @@ export default function OpportunitiesPage() {
     });
     if (remindMe) {
       setBookmarkedIds((prev) => new Set(prev).add(opportunityId));
+    }
+  }
+
+  function setOpportunityDone(opportunityId: number, done: boolean) {
+    setDoneIds((prev) => {
+      const next = new Set(prev);
+      if (done) next.add(opportunityId);
+      else next.delete(opportunityId);
+      return next;
+    });
+    if (done) {
+      setBookmarkedIds((prev) => new Set(prev).add(opportunityId));
+      setRemindMeIds((prev) => {
+        const next = new Set(prev);
+        next.delete(opportunityId);
+        return next;
+      });
     }
   }
 
@@ -483,14 +515,17 @@ export default function OpportunitiesPage() {
                     reasons={item.reasons}
                     showBookmark={canPersonalize}
                     showRemindMe={canPersonalize}
+                    showDone={canPersonalize}
                     bookmarked={bookmarkedIds.has(item.opportunity.id)}
                     remindMe={remindMeIds.has(item.opportunity.id)}
+                    done={doneIds.has(item.opportunity.id)}
                     onBookmarkChange={(next) =>
                       setOpportunityBookmarked(item.opportunity.id, next)
                     }
                     onRemindMeChange={(next) =>
                       setOpportunityRemindMe(item.opportunity.id, next)
                     }
+                    onDoneChange={(next) => setOpportunityDone(item.opportunity.id, next)}
                   />
                 ))
               : items.map((item) => (
@@ -499,10 +534,13 @@ export default function OpportunitiesPage() {
                     opportunity={item}
                     showBookmark={canPersonalize}
                     showRemindMe={canPersonalize}
+                    showDone={canPersonalize}
                     bookmarked={bookmarkedIds.has(item.id)}
                     remindMe={remindMeIds.has(item.id)}
+                    done={doneIds.has(item.id)}
                     onBookmarkChange={(next) => setOpportunityBookmarked(item.id, next)}
                     onRemindMeChange={(next) => setOpportunityRemindMe(item.id, next)}
+                    onDoneChange={(next) => setOpportunityDone(item.id, next)}
                   />
                 ))}
           </div>
