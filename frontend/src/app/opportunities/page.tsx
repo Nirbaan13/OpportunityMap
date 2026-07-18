@@ -302,7 +302,7 @@ export default function OpportunitiesPage() {
           ) : null}
         </div>
 
-        <section className="mt-6 space-y-4 border-b border-line pb-6">
+        <section className="relative z-10 mt-6 space-y-4 border-b border-line pb-6">
           {mode === "browse" ? (
             <form onSubmit={onSearch} className="flex flex-col gap-3 sm:flex-row">
               <input
@@ -321,172 +321,96 @@ export default function OpportunitiesPage() {
             </form>
           ) : null}
 
-          {/* Mobile: native selects (easier than chip walls); desktop keeps chips */}
-          <div className="space-y-3 sm:hidden">
-            <label className="block text-sm text-ink-soft">
-              Type
-              <select
-                value={opportunityType}
-                onChange={(e) => {
-                  setOpportunityType(e.target.value as OpportunityType | "");
-                  setPage(1);
-                }}
-                className="mt-1.5 min-h-12 w-full rounded-md border border-line bg-paper px-3 text-base text-ink outline-none focus:border-accent"
-              >
-                <option value="">All types</option>
-                {OPPORTUNITY_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {mode === "browse" ? (
-              <label className="block text-sm text-ink-soft">
-                Field
-                <select
-                  value={field}
-                  onChange={(e) => {
-                    setField(e.target.value);
-                    setPage(1);
-                  }}
-                  className="mt-1.5 min-h-12 w-full rounded-md border border-line bg-paper px-3 text-base text-ink outline-none focus:border-accent"
-                >
-                  <option value="">All fields</option>
-                  {fields.map((item) => (
-                    <option key={item.slug} value={item.slug}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-
-            {mode === "browse" ? (
-              <label className="block text-sm text-ink-soft">
-                Sort
-                <select
-                  value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value as OpportunitySort);
-                    setPage(1);
-                  }}
-                  className="mt-1.5 min-h-12 w-full rounded-md border border-line bg-paper px-3 text-base text-ink outline-none focus:border-accent"
-                >
-                  <option value="deadline_asc">Deadline soonest</option>
-                  <option value="deadline_desc">Deadline latest</option>
-                  <option value="newest">Newest</option>
-                  <option value="title">Title</option>
-                </select>
-              </label>
-            ) : null}
-
-            <label className="inline-flex min-h-12 items-center gap-3 text-sm text-ink-soft">
-              <input
-                type="checkbox"
-                className="h-5 w-5 accent-accent"
-                checked={openOnly}
-                onChange={(e) => {
-                  setOpenOnly(e.target.checked);
-                  setPage(1);
-                }}
-              />
-              Open deadlines only
-            </label>
-
-            {mode === "browse" && profile ? (
-              <label className="inline-flex min-h-12 items-center gap-3 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-accent"
-                  checked={eligibleForMe}
-                  onChange={(e) => {
-                    setEligibleForMe(e.target.checked);
-                    setPage(1);
-                  }}
-                />
-                Eligible for my grade/country
-              </label>
-            ) : null}
-          </div>
-
-          <div className="hidden space-y-4 sm:block">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpportunityType("");
-                  setPage(1);
-                }}
-                className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                  opportunityType === ""
-                    ? "border-accent bg-accent/10 text-ink"
-                    : "border-line text-ink-soft hover:border-accent/40"
-                }`}
-              >
-                All types
-              </button>
-              {OPPORTUNITY_TYPES.map((type) => (
+          <div className="space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                Type
+              </p>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 touch-pan-x sm:flex-wrap sm:overflow-visible">
                 <button
-                  key={type.value}
                   type="button"
                   onClick={() => {
-                    setOpportunityType(type.value);
+                    setOpportunityType("");
                     setPage(1);
                   }}
-                  className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                    opportunityType === type.value
+                  className={`shrink-0 rounded-md border px-3 py-2.5 text-sm font-medium transition ${
+                    opportunityType === ""
                       ? "border-accent bg-accent/10 text-ink"
-                      : "border-line text-ink-soft hover:border-accent/40"
+                      : "border-line bg-paper text-ink-soft hover:border-accent/40"
                   }`}
                 >
-                  {type.label}
+                  All types
                 </button>
-              ))}
-            </div>
-
-            {mode === "browse" ? (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setField("");
-                    setPage(1);
-                  }}
-                  className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                    field === ""
-                      ? "border-warm/50 bg-warm/10 text-ink"
-                      : "border-line text-ink-soft hover:border-warm/40"
-                  }`}
-                >
-                  All fields
-                </button>
-                {fields.map((item) => (
+                {OPPORTUNITY_TYPES.map((type) => (
                   <button
-                    key={item.slug}
+                    key={type.value}
                     type="button"
                     onClick={() => {
-                      setField(item.slug);
+                      setOpportunityType(type.value);
                       setPage(1);
                     }}
-                    className={`rounded-md border px-3 py-1.5 text-sm transition ${
-                      field === item.slug
-                        ? "border-warm/50 bg-warm/10 text-ink"
-                        : "border-line text-ink-soft hover:border-warm/40"
+                    className={`shrink-0 rounded-md border px-3 py-2.5 text-sm font-medium transition ${
+                      opportunityType === type.value
+                        ? "border-accent bg-accent/10 text-ink"
+                        : "border-line bg-paper text-ink-soft hover:border-accent/40"
                     }`}
                   >
-                    {item.name}
+                    {type.label}
                   </button>
                 ))}
               </div>
+            </div>
+
+            {mode === "browse" ? (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                  Field
+                </p>
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 touch-pan-x sm:flex-wrap sm:overflow-visible">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setField("");
+                      setPage(1);
+                    }}
+                    className={`shrink-0 rounded-md border px-3 py-2.5 text-sm font-medium transition ${
+                      field === ""
+                        ? "border-warm/50 bg-warm/10 text-ink"
+                        : "border-line bg-paper text-ink-soft hover:border-warm/40"
+                    }`}
+                  >
+                    All fields
+                  </button>
+                  {fields.map((item) => (
+                    <button
+                      key={item.slug}
+                      type="button"
+                      onClick={() => {
+                        setField(item.slug);
+                        setPage(1);
+                      }}
+                      aria-pressed={field === item.slug}
+                      className={`shrink-0 rounded-md border px-3 py-2.5 text-sm font-medium transition ${
+                        field === item.slug
+                          ? "border-warm/50 bg-warm/10 text-ink"
+                          : "border-line bg-paper text-ink-soft hover:border-warm/40"
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+                </div>
+                {fields.length === 0 ? (
+                  <p className="mt-2 text-sm text-ink-soft">Loading fields…</p>
+                ) : null}
+              </div>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              <label className="inline-flex items-center gap-2 text-ink-soft">
+            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
                 <input
                   type="checkbox"
-                  className="accent-accent"
+                  className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
                   checked={openOnly}
                   onChange={(e) => {
                     setOpenOnly(e.target.checked);
@@ -497,10 +421,10 @@ export default function OpportunitiesPage() {
               </label>
 
               {mode === "browse" && profile ? (
-                <label className="inline-flex items-center gap-2 text-ink-soft">
+                <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
                   <input
                     type="checkbox"
-                    className="accent-accent"
+                    className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
                     checked={eligibleForMe}
                     onChange={(e) => {
                       setEligibleForMe(e.target.checked);
@@ -512,7 +436,7 @@ export default function OpportunitiesPage() {
               ) : null}
 
               {mode === "browse" ? (
-                <label className="inline-flex items-center gap-2 text-ink-soft">
+                <label className="inline-flex min-h-11 items-center gap-2 text-ink-soft sm:min-h-0">
                   Sort
                   <select
                     value={sort}
@@ -520,7 +444,7 @@ export default function OpportunitiesPage() {
                       setSort(e.target.value as OpportunitySort);
                       setPage(1);
                     }}
-                    className="rounded-md border border-line bg-paper px-2 py-1.5 outline-none focus:border-accent"
+                    className="min-h-11 rounded-md border border-line bg-paper px-2 py-2 text-base outline-none focus:border-accent sm:min-h-0 sm:py-1.5 sm:text-sm"
                   >
                     <option value="deadline_asc">Deadline soonest</option>
                     <option value="deadline_desc">Deadline latest</option>
@@ -542,8 +466,9 @@ export default function OpportunitiesPage() {
 
           {!loading && !error && total === 0 ? (
             <p className="mt-8 text-ink-soft">
-              No opportunities match these filters. Try clearing a filter or turning off
-              “Open deadlines only” for year-round listings.
+              No opportunities match these filters
+              {field ? ` for this field` : ""}. Try another field, clear filters, or turn off
+              “Open deadlines only” to include year-round listings.
             </p>
           ) : null}
 
