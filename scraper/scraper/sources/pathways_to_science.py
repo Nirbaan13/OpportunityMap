@@ -20,7 +20,7 @@ from scraper.parsers.dates import (
     pick_notification_deadline,
 )
 from scraper.parsers.eligibility import is_high_school_program
-from scraper.parsers.field_mapping import categories_to_field_slugs
+from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
 from scraper.parsers.grades import parse_grade_eligibility
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
@@ -175,6 +175,10 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
     field_slugs = categories_to_field_slugs(disciplines)
     if not field_slugs and disciplines:
         field_slugs = categories_to_field_slugs(disciplines.replace("\n", ","))
+    field_slugs = merge_field_slugs(
+        field_slugs,
+        infer_field_slugs(title, description, disciplines, listing.title),
+    )
 
     deadline_at = parse_date(deadline_text, end_of_day=True) if deadline_text else None
     if deadline_at is None:

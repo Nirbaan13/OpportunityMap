@@ -15,7 +15,7 @@ from app.models.enums import OpportunityType
 from scraper.curl_client import CurlClient
 from scraper.parsers.dates import deadline_is_upcoming, parse_date
 from scraper.parsers.eligibility import devpost_blocks_high_schoolers
-from scraper.parsers.field_mapping import categories_to_field_slugs
+from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def _listing_params(*, page: int) -> dict[str, str]:
     }
 
 
-def _themes_to_field_slugs(theme_names: list[str]) -> list[str]:
+def _themes_to_field_slugs(theme_names: list[str], *, title: str = "") -> list[str]:
     slugs: list[str] = []
     for name in theme_names:
         mapped = THEME_TO_FIELDS.get(name.lower())
@@ -72,6 +72,7 @@ def _themes_to_field_slugs(theme_names: list[str]) -> list[str]:
         for slug in categories_to_field_slugs(name):
             if slug not in slugs:
                 slugs.append(slug)
+    slugs = merge_field_slugs(slugs, infer_field_slugs(title, " ".join(theme_names)))
     if not slugs:
         slugs.append("computer-science")
     return slugs
@@ -204,7 +205,7 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
             if listing.submission_period_dates
             else None
         ),
-        field_slugs=_themes_to_field_slugs(listing.themes),
+        field_slugs=_themes_to_field_slugs(listing.themes, title=title),
     )
 
 

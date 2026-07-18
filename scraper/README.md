@@ -39,20 +39,24 @@ python -m scraper.main --source competition_sciences --max-pages 2 --headed
 
 | Source | What it collects | Method |
 |--------|------------------|--------|
+| `all` (default) | Runs catalogs + live scrapers together | Combined |
+| `field_coverage_catalog` | Olympiads/research/competitions across **every interest field** (AI, chemistry, physics, social science, writing, business, …) | Curated seed, upserted each run |
+| `global_competitions` | Flagship international olympiads & ISEF | Curated seed |
 | `devpost` | Online beginner-friendly hackathons | JSON API |
-| `global_competitions` | International olympiads & science fairs | Curated seed |
 | `pathways_to_science` | High-school research internships | HTTP |
-| `competition_sciences` | ICS competitions | Playwright (often blocked) |
+| `competition_sciences` | ICS competitions | Playwright (often blocked; not in daily CI) |
 
-## CLI options
+## Automated updates
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--source` | `devpost` | Which scraper to run |
-| `--max-items` | 20 | Max programs for pathways (0 = all on page) |
-| `--max-pages` | 2 | Listing pages for competition_sciences |
-| `--delay` | 1.0 | Seconds between requests |
-| `--headed` | off | Show browser (competition_sciences only) |
+GitHub Actions runs **daily** (`scrape-opportunities.yml`):
+
+1. Upserts catalog + scraped listings (same `source_name` + `external_id` → update deadlines/text)
+2. Deactivates opportunities whose deadlines have passed
+
+```powershell
+python -m scraper.main --source all --max-items 80
+```
+
 
 ## Project Structure
 

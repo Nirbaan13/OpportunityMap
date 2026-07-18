@@ -2,8 +2,8 @@ name: Scrape opportunities
 
 on:
   schedule:
-    # Every 3 days at 01:00 UTC
-    - cron: "0 1 */3 * *"
+    # Daily at 01:00 UTC — refresh listings and deadlines
+    - cron: "0 1 * * *"
   workflow_dispatch:
 
 jobs:
@@ -24,13 +24,13 @@ jobs:
           # Scrapers import SQLAlchemy models from ../backend/app
           pip install -r ../backend/requirements.txt
           playwright install --with-deps chromium
-      - name: Run scrapers
+      - name: Run automated scrapers (all fields)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # So `import app` resolves to backend/app
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python -c "import app, scraper; print('imports ok')"
-          python -m scraper.main --source global_competitions
-          python -m scraper.main --source pathways_to_science
-          python -m scraper.main --source devpost --max-items 40
+          # Catalogs + live scrapers across AI, sciences, social science, writing, business, etc.
+          # Upserts update existing rows; maintenance deactivates past deadlines.
+          python -m scraper.main --source all --max-items 80 --max-pages 5 --delay 1.0
