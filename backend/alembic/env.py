@@ -14,6 +14,7 @@ from app.models import (  # noqa: F401
     Notification,
     Opportunity,
     Profile,
+    ProfileActivity,
     User,
 )
 

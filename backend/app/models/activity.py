@@ -9,7 +9,7 @@ from app.database import Base
 
 
 class Activity(Base):
-    """Types of activities a student may have completed (olympiad, hackathon, etc.)."""
+    """Types of activities a student may plan or have completed (olympiad, hackathon, etc.)."""
 
     __tablename__ = "activities"
 
@@ -20,6 +20,6 @@ class Activity(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
-    profiles: Mapped[list["Profile"]] = relationship(
-        secondary="profile_activities", back_populates="activities"
+    profile_links: Mapped[list["ProfileActivity"]] = relationship(
+        back_populates="activity"
     )

@@ -25,6 +25,13 @@ export type ActivityOption = {
   slug: string;
 };
 
+export type FieldInsight = {
+  field: FieldOption;
+  completed_count: number;
+  planned_count: number;
+  status: "strong" | "ok" | "short" | string;
+};
+
 export type Profile = {
   id: number;
   email: string;
@@ -36,6 +43,9 @@ export type Profile = {
   olympiad_experience: string | null;
   interests: FieldOption[];
   completed_activities: ActivityOption[];
+  planned_activities: ActivityOption[];
+  field_insights: FieldInsight[];
+  insight_summary: string;
   created_at: string;
   updated_at: string;
 };
@@ -49,6 +59,7 @@ export type ProfileWriteRequest = {
   olympiad_experience?: string | null;
   interest_slugs: string[];
   completed_activity_slugs: string[];
+  planned_activity_slugs: string[];
 };
 
 export type OpportunityType =

@@ -5,7 +5,7 @@ from app.models.field import Field
 from app.models.notification import Notification
 from app.models.opportunity import Opportunity, opportunity_fields
 from app.models.payment import Payment
-from app.models.profile import Profile, profile_activities, profile_fields
+from app.models.profile import Profile, ProfileActivity, profile_activities, profile_fields
 from app.models.user import User
 
 __all__ = [
@@ -18,6 +18,7 @@ __all__ = [
     "OpportunityType",
     "Payment",
     "Profile",
+    "ProfileActivity",
     "User",
     "opportunity_fields",
     "profile_activities",

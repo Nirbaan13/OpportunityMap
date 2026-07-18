@@ -14,12 +14,22 @@ profile_fields = Table(
     Column("field_id", ForeignKey("fields.id", ondelete="CASCADE"), primary_key=True),
 )
 
-profile_activities = Table(
-    "profile_activities",
-    Base.metadata,
-    Column("profile_id", ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True),
-    Column("activity_id", ForeignKey("activities.id", ondelete="CASCADE"), primary_key=True),
-)
+
+class ProfileActivity(Base):
+    """Join between a profile and an activity type, with planned vs completed status."""
+
+    __tablename__ = "profile_activities"
+
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    activity_id: Mapped[int] = mapped_column(
+        ForeignKey("activities.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed")
+
+    profile: Mapped["Profile"] = relationship(back_populates="activity_links")
+    activity: Mapped["Activity"] = relationship(back_populates="profile_links")
 
 
 class Profile(Base):
@@ -48,6 +58,28 @@ class Profile(Base):
     fields: Mapped[list["Field"]] = relationship(
         secondary=profile_fields, back_populates="profiles"
     )
-    activities: Mapped[list["Activity"]] = relationship(
-        secondary=profile_activities, back_populates="profiles"
+    activity_links: Mapped[list[ProfileActivity]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
+
+    @property
+    def completed_activity_list(self) -> list["Activity"]:
+        return [
+            link.activity
+            for link in self.activity_links
+            if link.status == "completed" and link.activity is not None
+        ]
+
+    @property
+    def planned_activity_list(self) -> list["Activity"]:
+        return [
+            link.activity
+            for link in self.activity_links
+            if link.status == "planned" and link.activity is not None
+        ]
+
+
+# Back-compat alias for imports that still expect the old Table name.
+profile_activities = ProfileActivity.__table__

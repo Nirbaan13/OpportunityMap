@@ -11,12 +11,20 @@ from app.schemas.profile import (
     ProfileResponse,
     ProfileWriteRequest,
 )
-from app.services.profile_service import create_profile, get_profile, update_profile
+from app.services.profile_service import (
+    activity_options,
+    build_field_insights,
+    build_insight_summary,
+    create_profile,
+    get_profile,
+    update_profile,
+)
 
 router = APIRouter(tags=["profiles"])
 
 
 def _to_profile_response(profile: Profile) -> ProfileResponse:
+    insights = build_field_insights(profile)
     return ProfileResponse(
         id=profile.id,
         email=profile.user.email,
@@ -27,9 +35,10 @@ def _to_profile_response(profile: Profile) -> ProfileResponse:
         research_experience=profile.research_experience,
         olympiad_experience=profile.olympiad_experience,
         interests=[FieldOption.model_validate(field) for field in profile.fields],
-        completed_activities=[
-            ActivityOption.model_validate(activity) for activity in profile.activities
-        ],
+        completed_activities=activity_options(profile.completed_activity_list),
+        planned_activities=activity_options(profile.planned_activity_list),
+        field_insights=insights,
+        insight_summary=build_insight_summary(insights),
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )

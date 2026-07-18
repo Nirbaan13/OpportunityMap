@@ -6,13 +6,16 @@ import { SelectField, TextArea, TextField } from "@/components/FormFields";
 import { api } from "@/lib/api";
 import { ApiError, type ActivityOption, type FieldOption, type Profile } from "@/types/api";
 
+type ActivityStatus = "none" | "planned" | "completed";
+
 type ProfileFormProps = {
   token: string;
   existing: Profile | null;
   onSaved: (profile: Profile) => void;
+  onCancel?: () => void;
 };
 
-export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
+export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormProps) {
   const [fields, setFields] = useState<FieldOption[]>([]);
   const [activities, setActivities] = useState<ActivityOption[]>([]);
   const [fullName, setFullName] = useState(existing?.full_name ?? "");
@@ -24,9 +27,12 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
   const [interestSlugs, setInterestSlugs] = useState<string[]>(
     existing?.interests.map((f) => f.slug) ?? [],
   );
-  const [activitySlugs, setActivitySlugs] = useState<string[]>(
-    existing?.completed_activities.map((a) => a.slug) ?? [],
-  );
+  const [activityStatus, setActivityStatus] = useState<Record<string, ActivityStatus>>(() => {
+    const next: Record<string, ActivityStatus> = {};
+    for (const item of existing?.completed_activities ?? []) next[item.slug] = "completed";
+    for (const item of existing?.planned_activities ?? []) next[item.slug] = "planned";
+    return next;
+  });
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,16 +63,19 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
     };
   }, []);
 
-  function toggleSlug(
-    slug: string,
-    current: string[],
-    setter: (next: string[]) => void,
-  ) {
-    setter(
-      current.includes(slug)
-        ? current.filter((item) => item !== slug)
-        : [...current, slug],
+  function toggleInterest(slug: string) {
+    setInterestSlugs((current) =>
+      current.includes(slug) ? current.filter((item) => item !== slug) : [...current, slug],
     );
+  }
+
+  function setStatus(slug: string, status: ActivityStatus) {
+    setActivityStatus((current) => {
+      const next = { ...current };
+      if (status === "none") delete next[slug];
+      else next[slug] = status;
+      return next;
+    });
   }
 
   async function onSubmit(event: FormEvent) {
@@ -79,6 +88,13 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
       return;
     }
 
+    const completed_activity_slugs = Object.entries(activityStatus)
+      .filter(([, status]) => status === "completed")
+      .map(([slug]) => slug);
+    const planned_activity_slugs = Object.entries(activityStatus)
+      .filter(([, status]) => status === "planned")
+      .map(([slug]) => slug);
+
     const payload = {
       full_name: fullName.trim(),
       location: location.trim(),
@@ -87,7 +103,8 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
       research_experience: research.trim() || null,
       olympiad_experience: olympiad.trim() || null,
       interest_slugs: interestSlugs,
-      completed_activity_slugs: activitySlugs,
+      completed_activity_slugs,
+      planned_activity_slugs,
     };
 
     setSaving(true);
@@ -170,7 +187,7 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
                   type="checkbox"
                   className="accent-accent"
                   checked={checked}
-                  onChange={() => toggleSlug(field.slug, interestSlugs, setInterestSlugs)}
+                  onChange={() => toggleInterest(field.slug)}
                 />
                 {field.name}
               </label>
@@ -180,30 +197,48 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
       </section>
 
       <section>
-        <h2 className="font-display text-lg font-semibold text-ink">What you have done</h2>
+        <h2 className="font-display text-lg font-semibold text-ink">Activities</h2>
         <p className="mt-1 text-sm text-ink-soft">
-          Tick activities you have already completed.
+          Save activities you plan to do, or mark ones you have already completed.
         </p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="mt-4 space-y-3">
           {activities.map((activity) => {
-            const checked = activitySlugs.includes(activity.slug);
+            const status = activityStatus[activity.slug] ?? "none";
             return (
-              <label
+              <div
                 key={activity.slug}
-                className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition ${
-                  checked
-                    ? "border-warm/60 bg-warm/10 text-ink"
-                    : "border-line bg-paper text-ink-soft hover:border-warm/40"
-                }`}
+                className="flex flex-col gap-3 rounded-md border border-line bg-paper px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <input
-                  type="checkbox"
-                  className="accent-warm"
-                  checked={checked}
-                  onChange={() => toggleSlug(activity.slug, activitySlugs, setActivitySlugs)}
-                />
-                {activity.name}
-              </label>
+                <p className="text-sm font-medium text-ink">{activity.name}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStatus(activity.slug, status === "planned" ? "none" : "planned")
+                    }
+                    className={`min-h-10 rounded-md border px-3 text-sm font-medium transition ${
+                      status === "planned"
+                        ? "border-accent bg-accent/10 text-ink"
+                        : "border-line text-ink-soft hover:border-accent/40"
+                    }`}
+                  >
+                    {status === "planned" ? "Saved for later" : "Save for later"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStatus(activity.slug, status === "completed" ? "none" : "completed")
+                    }
+                    className={`min-h-10 rounded-md border px-3 text-sm font-medium transition ${
+                      status === "completed"
+                        ? "border-warm/60 bg-warm/10 text-ink"
+                        : "border-line text-ink-soft hover:border-warm/40"
+                    }`}
+                  >
+                    {status === "completed" ? "Marked done" : "Mark done"}
+                  </button>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -229,13 +264,24 @@ export function ProfileForm({ token, existing, onSaved }: ProfileFormProps) {
       {error ? <p className="text-sm text-danger">{error}</p> : null}
       {success ? <p className="text-sm text-accent">{success}</p> : null}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="inline-flex items-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft disabled:opacity-60"
-      >
-        {saving ? "Saving…" : existing ? "Save changes" : "Create profile"}
-      </button>
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className="inline-flex min-h-12 items-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft disabled:opacity-60"
+        >
+          {saving ? "Saving…" : existing ? "Save changes" : "Create profile"}
+        </button>
+        {onCancel ? (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex min-h-12 items-center rounded-md border border-line px-5 py-3 text-sm font-medium text-ink-soft transition hover:border-accent hover:text-accent"
+          >
+            Cancel
+          </button>
+        ) : null}
+      </div>
     </form>
   );
 }

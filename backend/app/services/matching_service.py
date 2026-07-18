@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.models import Opportunity, Profile, User
 from app.models.enums import OpportunityType
+from app.models.profile import ProfileActivity
 from app.schemas.profile import FieldOption
 
 RESEARCH_TYPES = frozenset(
@@ -69,7 +70,10 @@ class ScoredMatch:
 def _load_profile(db: Session, user: User) -> Profile:
     profile = db.scalar(
         select(Profile)
-        .options(joinedload(Profile.fields), joinedload(Profile.activities))
+        .options(
+            joinedload(Profile.fields),
+            joinedload(Profile.activity_links).joinedload(ProfileActivity.activity),
+        )
         .where(Profile.user_id == user.id)
     )
     if profile is None:
@@ -143,7 +147,7 @@ def score_opportunity(profile: Profile, opportunity: Opportunity) -> ScoredMatch
 
     activity_types = {
         ACTIVITY_SLUG_TO_TYPE[activity.slug]
-        for activity in profile.activities
+        for activity in profile.completed_activity_list
         if activity.slug in ACTIVITY_SLUG_TO_TYPE
     }
     if opportunity.opportunity_type in activity_types:
