@@ -10,7 +10,7 @@ import scraper.db  # noqa: F401 — adds backend/ to sys.path for SQLAlchemy mod
 from scraper.curl_client import CurlClient
 from scraper.db import SessionLocal
 from scraper.http_client import BrowserClient
-from scraper.maintenance import deactivate_past_deadlines
+from scraper.maintenance import deactivate_past_deadlines, deactivate_unusable_titles
 from scraper.sources.competition_sciences import scrape_competition_sciences
 from scraper.sources.devpost import scrape_devpost
 from scraper.sources.field_coverage_catalog import seed_field_coverage_catalog
@@ -84,13 +84,13 @@ def main() -> None:
     parser.add_argument(
         "--max-pages",
         type=int,
-        default=5,
+        default=8,
         help="Listing pages for competition_sciences or devpost (0 = all pages)",
     )
     parser.add_argument(
         "--max-items",
         type=int,
-        default=80,
+        default=150,
         help="Max items for live scrapers (0 = all on listing page)",
     )
     parser.add_argument(
@@ -107,7 +107,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-maintenance",
         action="store_true",
-        help="Skip deactivating past-deadline opportunities",
+        help="Skip deactivating past-deadline / junk-title opportunities",
     )
     args = parser.parse_args()
 
@@ -139,7 +139,9 @@ def main() -> None:
 
         if not args.skip_maintenance:
             deactivated = deactivate_past_deadlines(db)
+            junk = deactivate_unusable_titles(db)
             print(f"\nMaintenance: deactivated {deactivated} past-deadline opportunit(ies)")
+            print(f"Maintenance: deactivated {junk} unusable-title opportunit(ies)")
     finally:
         db.close()
 

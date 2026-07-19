@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,7 +20,10 @@ from app.services.profile_service import (
     build_field_insights,
     build_insight_summary,
     create_profile,
+    filter_bookmarks_since,
     get_profile,
+    membership_year_start,
+    resolve_joined_at,
     update_profile,
 )
 
@@ -26,14 +31,20 @@ router = APIRouter(tags=["profiles"])
 
 
 def _to_profile_response(db: Session, user: User, profile: Profile) -> ProfileResponse:
-    completed = bookmark_service.list_completed_for_user(db, user)
+    now = datetime.now(UTC)
+    joined_at = resolve_joined_at(profile, user)
+    since = membership_year_start(joined_at, now=now)
+    completed_all = bookmark_service.list_completed_for_user(db, user)
+    completed = filter_bookmarks_since(completed_all, since=since)
     saved_rows, _ = bookmark_service.list_bookmarks(
         db, user, page=1, page_size=100, status_filter="saved"
     )
     insights = build_field_insights(
         profile,
-        completed_bookmarks=completed,
+        completed_bookmarks=completed_all,
         saved_bookmarks=saved_rows,
+        now=now,
+        joined_at=joined_at,
     )
     return ProfileResponse(
         id=profile.id,
@@ -59,7 +70,12 @@ def _to_profile_response(db: Session, user: User, profile: Profile) -> ProfileRe
             if row.opportunity is not None
         ],
         field_insights=insights,
-        insight_summary=build_insight_summary(insights),
+        insight_summary=build_insight_summary(
+            insights,
+            grade=profile.grade_level,
+            joined_at=joined_at,
+            now=now,
+        ),
         created_at=profile.created_at,
         updated_at=profile.updated_at,
     )

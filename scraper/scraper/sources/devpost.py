@@ -27,6 +27,15 @@ SOURCE_NAME = "devpost"
 REQUIRED_THEME = "beginner friendly"
 REQUIRED_LOCATION = "online"
 
+# Devpost detail HTML often ships a noscript <h1> when fetched without a full browser.
+_UNUSABLE_TITLE_MARKERS = (
+    "javascript is disabled",
+    "enable javascript",
+    "please enable javascript",
+    "js is disabled",
+    "noscript",
+)
+
 THEME_TO_FIELDS: dict[str, list[str]] = {
     "machine learning/ai": ["ai", "computer-science"],
     "web": ["computer-science"],
@@ -161,15 +170,46 @@ def _extract_deadline_iso(soup: BeautifulSoup) -> str | None:
     return None
 
 
+def _is_unusable_title(title: str | None) -> bool:
+    if not title or not title.strip():
+        return True
+    lowered = title.strip().lower()
+    return any(marker in lowered for marker in _UNUSABLE_TITLE_MARKERS)
+
+
+def _extract_page_title(soup: BeautifulSoup) -> str | None:
+    """Prefer og:title; ignore noscript / JS-disabled fallback headings."""
+    og = soup.select_one("meta[property='og:title']")
+    if og is not None:
+        content = (og.get("content") or "").strip()
+        if content and not _is_unusable_title(content):
+            # Devpost og titles often look like "Hack Name · Devpost"
+            return content.split("·", 1)[0].strip() or content
+
+    for selector in ("h1#challenge-title", "h1.challenge-title", "h1"):
+        node = soup.select_one(selector)
+        if node is None:
+            continue
+        text = node.get_text(strip=True)
+        if text and not _is_unusable_title(text):
+            return text
+    return None
+
+
 def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
     soup = BeautifulSoup(html, "lxml")
-    title_el = soup.select_one("h1") or soup.select_one("meta[property='og:title']")
-    if title_el is not None and title_el.name == "meta":
-        title = title_el.get("content", listing.title).strip()
-    else:
-        title = title_el.get_text(strip=True) if title_el else listing.title
-    if not title:
+    # Listing title comes from Devpost's JSON API and is trustworthy.
+    # Detail HTML fetched without JS often has <h1>JavaScript is disabled</h1>.
+    page_title = _extract_page_title(soup)
+    if not _is_unusable_title(listing.title):
         title = listing.title
+    elif page_title:
+        title = page_title
+    else:
+        title = listing.title
+
+    if _is_unusable_title(title):
+        raise ValueError(f"Unusable Devpost title for {listing.url!r}: {title!r}")
 
     eligibility_items = _extract_eligibility_items(soup)
     description = _extract_description(soup)

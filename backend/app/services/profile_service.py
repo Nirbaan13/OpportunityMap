@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+import math
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -12,6 +15,110 @@ from app.schemas.profile import (
     ProfileWriteRequest,
 )
 from app.services import bookmark_service
+
+
+def _as_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
+
+
+def _completion_time(bookmark: Bookmark) -> datetime | None:
+    return bookmark.completed_at or bookmark.created_at
+
+
+def resolve_joined_at(profile: Profile, user: User | None = None) -> datetime:
+    """When progress tracking starts: account signup, else profile creation."""
+    account = user or profile.user
+    if account is not None and account.created_at is not None:
+        return _as_utc(account.created_at)
+    return _as_utc(profile.created_at)
+
+
+def yearly_target_for_grade(grade: int) -> int:
+    """How many done opportunities per interest field we aim for in a membership year."""
+    if grade <= 8:
+        return 2
+    if grade <= 10:
+        return 3
+    if grade == 11:
+        return 4
+    # Grade 12 — still build, but the year is already late in the pipeline.
+    return 3
+
+
+def membership_year_start(joined_at: datetime, *, now: datetime | None = None) -> datetime:
+    """Start of the user's current membership year (anniversary of join)."""
+    now = _as_utc(now or datetime.now(UTC))
+    joined = _as_utc(joined_at)
+    try:
+        anniversary = joined.replace(year=now.year)
+    except ValueError:
+        # Feb 29 → Feb 28 in non-leap years
+        anniversary = joined.replace(year=now.year, day=28)
+    if anniversary > now:
+        try:
+            anniversary = joined.replace(year=now.year - 1)
+        except ValueError:
+            anniversary = joined.replace(year=now.year - 1, day=28)
+    return anniversary
+
+
+def months_into_membership_year(joined_at: datetime, *, now: datetime | None = None) -> int:
+    """1 in the first month after join/anniversary, up to 12."""
+    now = _as_utc(now or datetime.now(UTC))
+    start = membership_year_start(joined_at, now=now)
+    months = (now.year - start.year) * 12 + (now.month - start.month) + 1
+    return min(12, max(1, months))
+
+
+def expected_completions_by_pace(
+    *,
+    grade: int,
+    months_elapsed: int,
+) -> int:
+    target = yearly_target_for_grade(grade)
+    months_elapsed = min(12, max(1, months_elapsed))
+    return max(1, math.ceil(target * months_elapsed / 12))
+
+
+def field_pace_status(
+    completed_count: int,
+    *,
+    grade: int,
+    months_elapsed: int,
+) -> str:
+    """
+    Pace from join + grade:
+    - Month 1 after joining: 1 done can be ok (depends on grade target)
+    - Near end of membership year with only 1: usually short
+    - Higher grades have a higher yearly target
+    """
+    target = yearly_target_for_grade(grade)
+    expected = expected_completions_by_pace(grade=grade, months_elapsed=months_elapsed)
+    if completed_count <= 0:
+        return "short"
+    if completed_count >= target and completed_count >= expected:
+        return "strong"
+    if completed_count >= expected:
+        return "ok"
+    return "short"
+
+
+def filter_bookmarks_since(
+    bookmarks: list[Bookmark],
+    *,
+    since: datetime,
+) -> list[Bookmark]:
+    since = _as_utc(since)
+    out: list[Bookmark] = []
+    for bookmark in bookmarks:
+        when = _completion_time(bookmark)
+        if when is None:
+            continue
+        if _as_utc(when) >= since:
+            out.append(bookmark)
+    return out
 
 
 def _load_profile_query(user_id: int):
@@ -87,15 +194,24 @@ def build_field_insights(
     *,
     completed_bookmarks: list[Bookmark],
     saved_bookmarks: list[Bookmark] | None = None,
+    now: datetime | None = None,
+    joined_at: datetime | None = None,
 ) -> list[FieldInsight]:
-    """Count completed (and saved) opportunities per interest field."""
+    """Count completed opportunities since membership-year start, paced by join + grade."""
+    now = _as_utc(now or datetime.now(UTC))
+    joined = _as_utc(joined_at or resolve_joined_at(profile))
+    since = membership_year_start(joined, now=now)
+    months_elapsed = months_into_membership_year(joined, now=now)
+    grade = profile.grade_level
+
     saved_bookmarks = saved_bookmarks or []
+    period_completed = filter_bookmarks_since(completed_bookmarks, since=since)
     insights: list[FieldInsight] = []
 
     for field in sorted(profile.fields, key=lambda item: item.name.lower()):
         completed_count = sum(
             1
-            for bookmark in completed_bookmarks
+            for bookmark in period_completed
             if bookmark.opportunity
             and any(f.slug == field.slug for f in bookmark.opportunity.fields)
         )
@@ -105,53 +221,83 @@ def build_field_insights(
             if bookmark.opportunity
             and any(f.slug == field.slug for f in bookmark.opportunity.fields)
         )
-        if completed_count >= 2:
-            status_label = "strong"
-        elif completed_count == 1:
-            status_label = "ok"
-        else:
-            status_label = "short"
         insights.append(
             FieldInsight(
                 field=FieldOption.model_validate(field),
                 completed_count=completed_count,
                 planned_count=planned_count,
-                status=status_label,
+                status=field_pace_status(
+                    completed_count,
+                    grade=grade,
+                    months_elapsed=months_elapsed,
+                ),
             )
         )
     return insights
 
 
-def build_insight_summary(insights: list[FieldInsight]) -> str:
+def build_insight_summary(
+    insights: list[FieldInsight],
+    *,
+    grade: int,
+    joined_at: datetime,
+    now: datetime | None = None,
+) -> str:
+    now = _as_utc(now or datetime.now(UTC))
+    months_elapsed = months_into_membership_year(joined_at, now=now)
+    expected = expected_completions_by_pace(grade=grade, months_elapsed=months_elapsed)
+    target = yearly_target_for_grade(grade)
+
     if not insights:
-        return "Add interests to see how completed opportunities cover each field."
+        return (
+            "Add interests to see how completed opportunities cover each field "
+            "since you joined."
+        )
 
     strong_or_ok = [item for item in insights if item.completed_count > 0]
     short = [item for item in insights if item.status == "short"]
+    behind = [
+        item
+        for item in short
+        if item.completed_count > 0 and item.completed_count < expected
+    ]
 
     parts: list[str] = []
     if strong_or_ok:
         coverage = ", ".join(
             f"{item.completed_count} in {item.field.name}" for item in strong_or_ok
         )
-        parts.append(f"You've completed {coverage} opportunit(ies).")
+        parts.append(
+            f"Since your membership year started you've completed {coverage} "
+            "opportunit(ies)."
+        )
     else:
         parts.append(
-            "You haven't marked any opportunities done yet for your interests. "
+            "You haven't marked any opportunities done yet in this membership year. "
             "Open an opportunity and tap Mark done."
         )
 
-    if short:
+    if behind:
+        names = ", ".join(item.field.name for item in behind)
+        parts.append(
+            f"For grade {grade}, about {expected}+ per field by now "
+            f"(~{target}/year) keeps you on pace — you're running short on {names}."
+        )
+    elif short:
         if len(short) == 1:
-            parts.append(f"You're a little short on {short[0].field.name}.")
+            parts.append(
+                f"You're a little short on {short[0].field.name} for a grade {grade} pace."
+            )
         elif len(short) == 2:
             parts.append(
-                f"You're a little short on {short[0].field.name} and {short[1].field.name}."
+                f"You're a little short on {short[0].field.name} and "
+                f"{short[1].field.name} for a grade {grade} pace."
             )
         else:
             named = ", ".join(item.field.name for item in short[:-1])
             parts.append(
-                f"You're a little short on {named}, and {short[-1].field.name}."
+                f"You're a little short on {named}, and {short[-1].field.name} "
+                f"for a grade {grade} pace."
             )
 
     return " ".join(parts)

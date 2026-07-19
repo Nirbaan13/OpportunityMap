@@ -205,6 +205,63 @@ GLOBAL_COMPETITIONS: list[ScrapedOpportunity] = [
         deadline_summary="Varies by country — contact your national geography olympiad",
         field_slugs=["social-science"],
     ),
+    ScrapedOpportunity(
+        external_id="ioi-linguistics",
+        title="International Linguistics Olympiad (IOL)",
+        source_url="https://www.ioling.org/",
+        application_url="https://www.ioling.org/participation",
+        description=(
+            "The IOL is the world championship of linguistics problem-solving for secondary-school students. "
+            "National teams qualify through country olympiads such as NACLO (US/Canada)."
+        ),
+        opportunity_type=OpportunityType.OLYMPIAD,
+        grade_eligibility="High School",
+        grade_min=9,
+        grade_max=12,
+        eligible_countries=None,
+        experience_requirements="National team selection via country linguistics olympiad",
+        deadline_at=None,
+        deadline_summary="Varies by country — contact your national linguistics olympiad",
+        field_slugs=["social-science", "writing", "computer-science"],
+    ),
+    ScrapedOpportunity(
+        external_id="naclo",
+        title="North American Computational Linguistics Open (NACLO)",
+        source_url="https://naclo.org/",
+        application_url="https://naclo.org/",
+        description=(
+            "Open linguistics puzzle contest for middle and high school students in the US and Canada; "
+            "top scorers can advance toward the International Linguistics Olympiad."
+        ),
+        opportunity_type=OpportunityType.COMPETITION,
+        grade_eligibility="Middle School, High School",
+        grade_min=6,
+        grade_max=12,
+        eligible_countries=["US", "CA"],
+        experience_requirements="Open registration; no linguistics background required",
+        deadline_at=None,
+        deadline_summary="Open round typically January — check naclo.org",
+        field_slugs=["social-science", "computer-science", "writing"],
+    ),
+    ScrapedOpportunity(
+        external_id="icho-junior-note",
+        title="European Union Science Olympiad (EUSO)",
+        source_url="https://euso.eu/",
+        application_url="https://euso.eu/",
+        description=(
+            "Team science olympiad for EU students under 17 covering biology, chemistry, and physics "
+            "through experimental tasks."
+        ),
+        opportunity_type=OpportunityType.OLYMPIAD,
+        grade_eligibility="High School",
+        grade_min=8,
+        grade_max=11,
+        eligible_countries=None,
+        experience_requirements="EU national team selection; under 17",
+        deadline_at=None,
+        deadline_summary="Varies by EU member country",
+        field_slugs=["biology", "chemistry", "physics"],
+    ),
 ]
 
 

@@ -142,6 +142,10 @@ export default function ProfilePage() {
 
         <section className="mt-10 border-t border-line pt-8">
           <h2 className="font-display text-xl font-semibold text-ink">Your field progress</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Paced from when you joined, with a higher bar in higher grades. One done early
+            is fine; the same count late in your membership year means you&apos;re behind.
+          </p>
           <p className="mt-3 text-ink-soft leading-relaxed">{profile.insight_summary}</p>
 
           {profile.field_insights.length > 0 ? (
@@ -154,7 +158,7 @@ export default function ProfilePage() {
                   <p className="font-medium text-ink">{insight.field.name}</p>
                   <p className="mt-1 text-sm text-ink-soft">
                     {insight.completed_count} opportunit
-                    {insight.completed_count === 1 ? "y" : "ies"} done
+                    {insight.completed_count === 1 ? "y" : "ies"} done this membership year
                     {insight.planned_count > 0
                       ? ` · ${insight.planned_count} saved`
                       : ""}
@@ -169,7 +173,7 @@ export default function ProfilePage() {
                     }`}
                   >
                     {insight.status === "short"
-                      ? "A little short"
+                      ? "Behind pace"
                       : insight.status === "strong"
                         ? "Looking strong"
                         : "On track"}
@@ -182,11 +186,11 @@ export default function ProfilePage() {
 
         <section className="mt-10 border-t border-line pt-8">
           <h2 className="font-display text-xl font-semibold text-ink">
-            Opportunities you marked done
+            Done this membership year
           </h2>
           {(profile.completed_opportunities ?? []).length === 0 ? (
             <p className="mt-3 text-sm text-ink-soft">
-              Nothing marked done yet. Open{" "}
+              Nothing marked done in this membership year yet. Open{" "}
               <Link href="/opportunities" className="text-accent hover:underline">
                 Opportunities
               </Link>{" "}

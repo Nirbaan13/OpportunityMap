@@ -33,4 +33,4 @@ jobs:
           python -c "import app, scraper; print('imports ok')"
           # Catalogs + live scrapers across AI, sciences, social science, writing, business, etc.
           # Upserts update existing rows; maintenance deactivates past deadlines.
-          python -m scraper.main --source all --max-items 80 --max-pages 5 --delay 1.0
+          python -m scraper.main --source all --max-items 150 --max-pages 8 --delay 1.0
