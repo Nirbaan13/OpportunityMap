@@ -31,7 +31,7 @@ export default function OpportunitiesPage() {
   const [draftQ, setDraftQ] = useState("");
   const [opportunityType, setOpportunityType] = useState<OpportunityType | "">("");
   const [field, setField] = useState("");
-  const [openOnly, setOpenOnly] = useState(true);
+  const [openOnly, setOpenOnly] = useState(false);
   const [eligibleForMe, setEligibleForMe] = useState(true);
   const [sort, setSort] = useState<OpportunitySort>("deadline_asc");
   const [page, setPage] = useState(1);
@@ -45,9 +45,17 @@ export default function OpportunitiesPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const canUseMatches = Boolean(user && token && profile && user.is_premium);
   const canPersonalize = Boolean(user?.is_premium);
+  const activeFilterCount =
+    (opportunityType ? 1 : 0) +
+    (field ? 1 : 0) +
+    (openOnly ? 1 : 0) +
+    (mode === "browse" && eligibleForMe && profile ? 1 : 0) +
+    (mode === "browse" && sort !== "deadline_asc" ? 1 : 0) +
+    (q ? 1 : 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -260,24 +268,24 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <main className="atmosphere min-h-[calc(100dvh-5rem)]">
-      <div className="mx-auto max-w-4xl px-5 py-8 sm:px-10 sm:py-10">
-        <p className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
+    <main className="atmosphere min-h-[calc(100dvh-4rem)]">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-10 sm:py-10">
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">
           Discover
         </p>
-        <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:mt-3 sm:text-4xl">
           Opportunities
         </h1>
-        <p className="mt-3 max-w-2xl text-ink-soft">
+        <p className="mt-2 hidden max-w-2xl text-ink-soft sm:mt-3 sm:block">
           Browse openings by type and interest, or switch to personalized matches once your
           profile is set.
         </p>
 
-        <div className="mt-8 flex flex-wrap gap-2 border-b border-line pb-4">
+        <div className="mt-5 grid grid-cols-2 gap-2 border-b border-line pb-4 sm:mt-8 sm:flex sm:flex-wrap sm:gap-2">
           <button
             type="button"
             onClick={() => switchMode("browse")}
-            className={`min-h-11 rounded-md px-3.5 py-2 text-sm font-medium transition ${
+            className={`min-h-11 rounded-md px-3 py-2 text-sm font-medium transition ${
               mode === "browse"
                 ? "bg-ink text-paper"
                 : "text-ink-soft hover:bg-fog-deep/60 hover:text-ink"
@@ -292,7 +300,7 @@ export default function OpportunitiesPage() {
               switchMode("matches");
             }}
             disabled={!canUseMatches}
-            className={`min-h-11 rounded-md px-3.5 py-2 text-sm font-medium transition ${
+            className={`min-h-11 rounded-md px-3 py-2 text-sm font-medium transition ${
               mode === "matches"
                 ? "bg-ink text-paper"
                 : "text-ink-soft hover:bg-fog-deep/60 hover:text-ink disabled:cursor-not-allowed disabled:opacity-45"
@@ -306,7 +314,7 @@ export default function OpportunitiesPage() {
             For you
           </button>
           {!canUseMatches ? (
-            <p className="w-full pt-2 text-sm text-ink-soft">
+            <p className="col-span-2 pt-1 text-xs leading-relaxed text-ink-soft sm:w-full sm:pt-2 sm:text-sm">
               {!user ? (
                 <>
                   <Link href="/login" className="text-accent hover:underline">
@@ -319,7 +327,7 @@ export default function OpportunitiesPage() {
                   <Link href="/pricing" className="text-accent hover:underline">
                     View roadmap
                   </Link>{" "}
-                  for For you matches, profile, and alerts.
+                  for matches, profile, and alerts.
                 </>
               ) : (
                 <>
@@ -334,26 +342,43 @@ export default function OpportunitiesPage() {
           ) : null}
         </div>
 
-        <section className="relative z-10 mt-6 space-y-4 border-b border-line pb-6">
+        <section className="relative z-10 mt-4 space-y-3 border-b border-line pb-4 sm:mt-6 sm:space-y-4 sm:pb-6">
           {mode === "browse" ? (
-            <form onSubmit={onSearch} className="flex flex-col gap-3 sm:flex-row">
+            <form onSubmit={onSearch} className="flex gap-2">
               <input
                 type="search"
                 value={draftQ}
                 onChange={(e) => setDraftQ(e.target.value)}
-                placeholder="Search titles and descriptions"
-                className="w-full rounded-md border border-line bg-paper px-3 py-2.5 text-base outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
+                placeholder="Search titles"
+                className="min-h-11 flex-1 rounded-md border border-line bg-paper px-3 text-base outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
               />
               <button
                 type="submit"
-                className="min-h-11 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-ink-soft"
+                className="shrink-0 rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft"
               >
-                Search
+                Go
               </button>
             </form>
           ) : null}
 
-          <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="flex min-h-11 w-full items-center justify-between rounded-md border border-line bg-paper px-3 text-sm font-medium text-ink sm:hidden"
+            aria-expanded={filtersOpen}
+          >
+            <span>
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="ml-2 rounded-md bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-ink-soft">{filtersOpen ? "Hide" : "Show"}</span>
+          </button>
+
+          <div className={`space-y-4 ${filtersOpen ? "block" : "hidden sm:block"}`}>
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
                 Type
@@ -438,11 +463,11 @@ export default function OpportunitiesPage() {
               </div>
             ) : null}
 
-            <div className="flex flex-col gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-              <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
+            <div className="flex flex-col gap-3 rounded-md bg-fog/40 p-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:bg-transparent sm:p-0">
+              <label className="inline-flex min-h-10 items-center gap-3 text-ink-soft">
                 <input
                   type="checkbox"
-                  className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
+                  className="h-5 w-5 accent-accent"
                   checked={openOnly}
                   onChange={(e) => {
                     setOpenOnly(e.target.checked);
@@ -453,10 +478,10 @@ export default function OpportunitiesPage() {
               </label>
 
               {mode === "browse" && profile ? (
-                <label className="inline-flex min-h-11 items-center gap-3 text-ink-soft sm:min-h-0 sm:gap-2">
+                <label className="inline-flex min-h-10 items-center gap-3 text-ink-soft">
                   <input
                     type="checkbox"
-                    className="h-5 w-5 accent-accent sm:h-4 sm:w-4"
+                    className="h-5 w-5 accent-accent"
                     checked={eligibleForMe}
                     onChange={(e) => {
                       setEligibleForMe(e.target.checked);
@@ -468,15 +493,15 @@ export default function OpportunitiesPage() {
               ) : null}
 
               {mode === "browse" ? (
-                <label className="inline-flex min-h-11 items-center gap-2 text-ink-soft sm:min-h-0">
-                  Sort
+                <label className="inline-flex min-h-10 flex-1 items-center gap-2 text-ink-soft sm:min-w-[12rem] sm:flex-none">
+                  <span className="shrink-0">Sort</span>
                   <select
                     value={sort}
                     onChange={(e) => {
                       setSort(e.target.value as OpportunitySort);
                       setPage(1);
                     }}
-                    className="min-h-11 rounded-md border border-line bg-paper px-2 py-2 text-base outline-none focus:border-accent sm:min-h-0 sm:py-1.5 sm:text-sm"
+                    className="min-h-10 flex-1 rounded-md border border-line bg-paper px-2 py-2 text-base outline-none focus:border-accent sm:min-h-0 sm:flex-none sm:py-1.5 sm:text-sm"
                   >
                     <option value="deadline_asc">Deadline soonest</option>
                     <option value="deadline_desc">Deadline latest</option>
@@ -489,7 +514,7 @@ export default function OpportunitiesPage() {
           </div>
         </section>
 
-        <section className="mt-6">
+        <section className="mt-4 sm:mt-6">
           <p className="text-sm text-ink-soft">
             {loading ? "Loading…" : `${total} result${total === 1 ? "" : "s"}`}
           </p>
@@ -504,7 +529,7 @@ export default function OpportunitiesPage() {
             </p>
           ) : null}
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-3 sm:mt-4 sm:space-y-0">
             {mode === "matches"
               ? matchItems.map((item) => (
                   <OpportunityRow

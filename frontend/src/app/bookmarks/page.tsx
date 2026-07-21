@@ -103,8 +103,8 @@ export default function BookmarksPage() {
   }
 
   return (
-    <main className="atmosphere min-h-[calc(100vh-5rem)]">
-      <div className="mx-auto max-w-4xl px-6 py-10 sm:px-10">
+    <main className="atmosphere min-h-[calc(100dvh-4rem)]">
+      <div className="mx-auto max-w-4xl px-4 py-6 sm:px-10 sm:py-10">
         <p className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
           Library
         </p>
@@ -132,7 +132,7 @@ export default function BookmarksPage() {
             </p>
           ) : null}
 
-          <div className="mt-4">
+          <div className="mt-4 space-y-3">
             {items.map((item) => (
               <OpportunityRow
                 key={item.opportunity.id}

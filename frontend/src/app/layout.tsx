@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Outfit, Syne } from "next/font/google";
 
 import { AuthProvider } from "@/components/AuthProvider";
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { SiteHeader } from "@/components/SiteHeader";
 
 import "./globals.css";
@@ -32,7 +33,8 @@ export default function RootLayout({
       <body className={`${outfit.variable} ${syne.variable} antialiased`}>
         <AuthProvider>
           <SiteHeader />
-          {children}
+          <div className="pb-[calc(3.25rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
+          <MobileBottomNav />
         </AuthProvider>
       </body>
     </html>

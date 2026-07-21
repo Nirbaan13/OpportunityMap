@@ -38,10 +38,12 @@ function initialsFrom(email: string, fullName: string | null): string {
 type UserMenuProps = {
   /** When true, menu fills the screen (mobile sheet). */
   forceSheet?: boolean;
+  /** Hide duplicate nav links — use when bottom tab bar is visible. */
+  compactNav?: boolean;
   className?: string;
 };
 
-export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) {
+export function UserMenu({ forceSheet = false, compactNav = false, className = "" }: UserMenuProps) {
   const { user, token } = useAuth();
   const pathname = usePathname();
   const menuId = useId();
@@ -131,7 +133,7 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
 
   const label = initialsFrom(user.email, stats.fullName);
   const panelClass = forceSheet
-    ? "fixed inset-x-0 bottom-0 top-[3.5rem] z-50 overflow-y-auto overscroll-contain border-t border-line bg-paper px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[var(--shadow-soft)]"
+    ? "fixed inset-x-0 bottom-0 top-[3.25rem] z-50 overflow-y-auto overscroll-contain border-t border-line bg-paper px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[var(--shadow-soft)]"
     : "absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-lg border border-line bg-paper shadow-[var(--shadow-soft)]";
 
   return (
@@ -230,38 +232,44 @@ export function UserMenu({ forceSheet = false, className = "" }: UserMenuProps) 
               </div>
             )}
 
-            <nav className="flex flex-col py-1">
-              <MenuLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
-                Opportunities
-              </MenuLink>
-              {isPremium ? (
-                <>
-                  <MenuLink href="/profile" active={pathname === "/profile"}>
-                    Profile
-                  </MenuLink>
-                  <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
-                    Saved
-                    {stats.saved > 0 ? (
-                      <span className="ml-auto text-xs tabular-nums text-ink-soft">
-                        {stats.saved}
-                      </span>
-                    ) : null}
-                  </MenuLink>
-                  <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
-                    Alerts
-                    {stats.unread > 0 ? (
-                      <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
-                        {stats.unread > 99 ? "99+" : stats.unread}
-                      </span>
-                    ) : null}
-                  </MenuLink>
-                </>
-              ) : (
-                <MenuLink href="/pricing" active={pathname.startsWith("/pricing")}>
-                  View roadmap
+            {!compactNav ? (
+              <nav className="flex flex-col py-1">
+                <MenuLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+                  Opportunities
                 </MenuLink>
-              )}
-            </nav>
+                {isPremium ? (
+                  <>
+                    <MenuLink href="/profile" active={pathname === "/profile"}>
+                      Profile
+                    </MenuLink>
+                    <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
+                      Saved
+                      {stats.saved > 0 ? (
+                        <span className="ml-auto text-xs tabular-nums text-ink-soft">
+                          {stats.saved}
+                        </span>
+                      ) : null}
+                    </MenuLink>
+                    <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
+                      Alerts
+                      {stats.unread > 0 ? (
+                        <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
+                          {stats.unread > 99 ? "99+" : stats.unread}
+                        </span>
+                      ) : null}
+                    </MenuLink>
+                  </>
+                ) : (
+                  <MenuLink href="/pricing" active={pathname.startsWith("/pricing")}>
+                    View roadmap
+                  </MenuLink>
+                )}
+              </nav>
+            ) : (
+              <div className="py-2 px-1 text-sm text-ink-soft">
+                Use the tabs below to move between Browse, Saved, and Alerts.
+              </div>
+            )}
           </div>
         </>
       ) : null}

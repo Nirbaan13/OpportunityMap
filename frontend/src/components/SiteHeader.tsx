@@ -51,9 +51,10 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`relative z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-5 ${
-        isHome ? "text-ink" : "border-b border-line bg-paper/70 backdrop-blur-sm"
+      className={`sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-10 sm:py-4 ${
+        isHome ? "text-ink bg-paper/80 backdrop-blur-sm" : "border-b border-line bg-paper/85 backdrop-blur-sm"
       }`}
+      style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
     >
       <Link
         href="/"
@@ -136,10 +137,10 @@ export function SiteHeader() {
         {!loading && user ? <UserMenu /> : null}
       </div>
 
-      {/* Mobile: one control — profile menu when signed in, guest menu otherwise */}
+      {/* Mobile: account menu when signed in; guest menu otherwise */}
       <div className="flex items-center gap-2 md:hidden">
         {!loading && user ? (
-          <UserMenu forceSheet />
+          <UserMenu forceSheet compactNav />
         ) : (
           <>
             <Link
@@ -183,7 +184,7 @@ export function SiteHeader() {
           />
           <div
             id={mobileMenuId}
-            className="fixed inset-x-0 top-[3.5rem] z-40 border-t border-line bg-paper px-4 py-4 shadow-[var(--shadow-soft)] md:hidden"
+            className="fixed inset-x-0 top-[3.25rem] z-40 border-t border-line bg-paper px-4 py-4 shadow-[var(--shadow-soft)] md:hidden"
           >
             <nav className="flex flex-col gap-1">
               <Link

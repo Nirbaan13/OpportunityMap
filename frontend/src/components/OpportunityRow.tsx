@@ -51,6 +51,7 @@ export function OpportunityRow({
     opportunity.grade_max,
     opportunity.grade_eligibility,
   );
+  const displayFields = sharedFields ?? opportunity.fields;
   const showActions =
     showBookmark ||
     onBookmarkChange ||
@@ -60,42 +61,56 @@ export function OpportunityRow({
     onDoneChange;
 
   return (
-    <article className="border-b border-line py-5 first:pt-0 last:border-b-0 sm:py-6">
+    <article className="rounded-lg border border-line bg-paper/70 px-3 py-4 sm:border-0 sm:border-b sm:bg-transparent sm:px-0 sm:py-6 sm:first:pt-0 sm:last:border-b-0">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">
-            {formatOpportunityType(opportunity.opportunity_type)}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-accent sm:text-xs">
+              {formatOpportunityType(opportunity.opportunity_type)}
+            </p>
             {score != null ? (
-              <span className="ml-3 font-medium normal-case tracking-normal text-warm">
+              <span className="rounded-md bg-warm/15 px-1.5 py-0.5 text-[0.65rem] font-semibold text-warm sm:text-xs">
                 Match {score}
               </span>
             ) : null}
             {done ? (
-              <span className="ml-3 font-medium normal-case tracking-normal text-warm">
+              <span className="rounded-md bg-accent/10 px-1.5 py-0.5 text-[0.65rem] font-semibold text-accent sm:text-xs">
                 Done
               </span>
             ) : null}
-          </p>
-          <h2 className="mt-1.5 font-display text-lg font-semibold tracking-tight text-ink sm:text-xl">
+          </div>
+
+          <h2 className="mt-1.5 font-display text-base font-semibold leading-snug tracking-tight text-ink sm:text-xl">
             <Link href={href} className="transition hover:text-accent">
               {opportunity.title}
             </Link>
           </h2>
 
-          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            <span className="text-ink">Due {formatDeadline(opportunity.deadline_at)}</span>
+          <p className="mt-2 text-sm text-ink-soft">
+            <span className="font-medium text-ink">{formatDeadline(opportunity.deadline_at)}</span>
             <span className="mx-1.5 text-line">·</span>
             <span>{gradeLabel}</span>
           </p>
-          <p className="mt-1 line-clamp-2 text-sm text-ink-soft sm:line-clamp-none">
-            {countries}
-          </p>
+          <p className="mt-1 line-clamp-1 text-xs text-ink-soft sm:text-sm">{countries}</p>
 
-          {opportunity.fields.length > 0 ? (
-            <p className="mt-2 line-clamp-1 text-sm text-ink-soft sm:line-clamp-none">
-              {(sharedFields ?? opportunity.fields).map((field) => field.name).join(" · ")}
-            </p>
+          {displayFields.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {displayFields.slice(0, 4).map((field) => (
+                <span
+                  key={field.slug}
+                  className="rounded-md bg-fog px-2 py-0.5 text-[0.65rem] font-medium text-ink-soft sm:text-xs"
+                >
+                  {field.name}
+                </span>
+              ))}
+              {displayFields.length > 4 ? (
+                <span className="rounded-md bg-fog px-2 py-0.5 text-[0.65rem] font-medium text-ink-soft sm:text-xs">
+                  +{displayFields.length - 4}
+                </span>
+              ) : null}
+            </div>
           ) : null}
+
           {reasons && reasons.length > 0 ? (
             <p className="mt-2 hidden text-xs text-ink-soft/90 sm:block">{reasons.join(" · ")}</p>
           ) : null}
@@ -140,29 +155,29 @@ export function OpportunityRow({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:hidden">
-        <Link
-          href={href}
-          className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper"
-        >
-          View details
-        </Link>
+      <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
         <a
           href={applyUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-11 items-center justify-center rounded-md border border-line px-4 text-sm font-medium text-ink-soft"
+          className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md bg-ink px-3 text-sm font-semibold text-paper"
         >
-          Apply / source
+          Apply
         </a>
+        <Link
+          href={href}
+          className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm font-medium text-ink-soft"
+        >
+          Details
+        </Link>
         {showActions ? (
-          <div className="grid grid-cols-2 gap-2">
+          <>
             {showBookmark || onBookmarkChange ? (
               <BookmarkButton
                 opportunityId={opportunity.id}
                 bookmarked={bookmarked}
                 onChange={onBookmarkChange}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
               />
             ) : null}
             {showDone || onDoneChange ? (
@@ -170,7 +185,7 @@ export function OpportunityRow({
                 opportunityId={opportunity.id}
                 done={done}
                 onChange={onDoneChange}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
               />
             ) : null}
             {showRemindMe || onRemindMeChange ? (
@@ -178,10 +193,10 @@ export function OpportunityRow({
                 opportunityId={opportunity.id}
                 remindMe={remindMe}
                 onChange={onRemindMeChange}
-                className="col-span-2 inline-flex min-h-11 w-full items-center justify-center rounded-md border border-line px-3"
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line px-3 text-sm"
               />
             ) : null}
-          </div>
+          </>
         ) : null}
       </div>
     </article>

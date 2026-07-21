@@ -162,7 +162,7 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
             return (
               <label
                 key={field.slug}
-                className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition ${
+                className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md border px-3 py-2.5 text-sm transition ${
                   checked
                     ? "border-accent bg-accent/10 text-ink"
                     : "border-line bg-paper text-ink-soft hover:border-accent/40"
@@ -170,7 +170,7 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
               >
                 <input
                   type="checkbox"
-                  className="accent-accent"
+                  className="h-4 w-4 accent-accent"
                   checked={checked}
                   onChange={() => toggleInterest(field.slug)}
                 />
