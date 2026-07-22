@@ -75,6 +75,8 @@ function loadRazorpayScript(): Promise<void> {
 type PremiumPaywallProps = {
   title?: string;
   compact?: boolean;
+  /** Renew mode: let an already-premium member pay again to extend their year. */
+  renew?: boolean;
 };
 
 type CheckoutStage =
@@ -94,6 +96,7 @@ const sleep = (milliseconds: number) =>
 export function PremiumPaywall({
   title = "Unlock premium",
   compact = false,
+  renew = false,
 }: PremiumPaywallProps) {
   const { user, token, refreshUser, updateUser } = useAuth();
   const [config, setConfig] = useState<PaymentConfig | null>(null);
@@ -153,13 +156,13 @@ export function PremiumPaywall({
   );
 
   useEffect(() => {
-    if (!orderStorageKey || !token || user?.is_premium) return;
+    if (!orderStorageKey || !token || (user?.is_premium && !renew)) return;
     const pendingOrder = localStorage.getItem(orderStorageKey);
     if (!pendingOrder) return;
     void reconcile(pendingOrder, 1).then((paid) => {
       if (!paid) setStage("idle");
     });
-  }, [orderStorageKey, reconcile, token, user?.is_premium]);
+  }, [orderStorageKey, reconcile, renew, token, user?.is_premium]);
 
   async function unlock() {
     if (!token) return;
@@ -271,7 +274,17 @@ export function PremiumPaywall({
     );
   }
 
-  if (user.is_premium || done) {
+  if (done) {
+    return (
+      <p className="text-sm text-accent">
+        {renew
+          ? "Renewed. Another 365 days were added to your membership."
+          : "Premium unlocked. Your account is ready to use."}
+      </p>
+    );
+  }
+
+  if (user.is_premium && !renew) {
     return (
       <p className="text-sm text-accent">Premium unlocked. Your account is ready to use.</p>
     );
@@ -281,8 +294,10 @@ export function PremiumPaywall({
     <div className={compact ? "" : "rounded-md border border-line bg-paper/80 p-6"}>
       <p className="font-display text-lg font-semibold text-ink">{title}</p>
       <p className="mt-2 text-sm text-ink-soft">
-        {config?.description ??
-          "Yearly membership for profile, recommendations, saved opportunities, and alerts."}
+        {renew
+          ? "Renew early to add another 365 days on top of your current expiry."
+          : config?.description ??
+            "Yearly membership for profile, recommendations, saved opportunities, and alerts."}
       </p>
       {config ? (
         <p className="mt-3 font-display text-2xl font-bold text-ink">
@@ -291,7 +306,7 @@ export function PremiumPaywall({
         </p>
       ) : null}
       <p className="mt-1 text-xs text-ink-soft">
-        One-time annual purchase · no automatic renewal
+        One-time annual purchase · no automatic charge
       </p>
       <button
         type="button"
@@ -308,7 +323,9 @@ export function PremiumPaywall({
           : config?.dev_unlock_available
             ? `Start yearly (test) — ₹${config.price_inr}`
             : config
-              ? `Pay ₹${config.price_inr}`
+              ? renew
+                ? `Renew for ₹${config.price_inr}`
+                : `Pay ₹${config.price_inr}`
               : "Loading price…"}
       </button>
       {stage === "cancelled" ? (

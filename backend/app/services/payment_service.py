@@ -205,6 +205,8 @@ def _apply_payment_entity(
                 )
             )
             db.flush()
+            # A fresh purchase opts the user into renewal reminders by default.
+            user.auto_renew = True
         recompute_premium(db, user)
     elif provider_status == "failed":
         if payment.status != "paid":

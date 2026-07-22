@@ -131,6 +131,14 @@ export const api = {
     return request<User>("/auth/me", { token });
   },
 
+  setAutoRenew(token: string, autoRenew: boolean) {
+    return request<User>("/auth/me/auto-renew", {
+      method: "PATCH",
+      token,
+      body: { auto_renew: autoRenew },
+    });
+  },
+
   listFields() {
     return request<FieldOption[]>("/fields");
   },

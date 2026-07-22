@@ -14,3 +14,4 @@ class OpportunityType(str, enum.Enum):
 class NotificationType(str, enum.Enum):
     NEW_MATCH = "new_match"
     DEADLINE_REMINDER = "deadline_reminder"
+    PREMIUM_RENEWAL = "premium_renewal"

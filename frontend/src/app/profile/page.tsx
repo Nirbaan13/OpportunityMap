@@ -11,12 +11,31 @@ import { api } from "@/lib/api";
 import { ApiError, type Profile } from "@/types/api";
 
 export default function ProfilePage() {
-  const { user, token, loading, refreshUser, logout } = useAuth();
+  const { user, token, loading, refreshUser, updateUser, logout } = useAuth();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [renewing, setRenewing] = useState(false);
+  const [autoRenewSaving, setAutoRenewSaving] = useState(false);
+  const [autoRenewError, setAutoRenewError] = useState<string | null>(null);
+
+  async function toggleAutoRenew(next: boolean) {
+    if (!token) return;
+    setAutoRenewSaving(true);
+    setAutoRenewError(null);
+    try {
+      const updated = await api.setAutoRenew(token, next);
+      updateUser(updated);
+    } catch (err) {
+      setAutoRenewError(
+        err instanceof ApiError ? err.message : "Could not update auto-renew.",
+      );
+    } finally {
+      setAutoRenewSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (loading) return;
@@ -233,6 +252,53 @@ export default function ProfilePage() {
             </div>
           </section>
         ) : null}
+
+        <section className="mt-10 border-t border-line pt-8">
+          <h2 className="font-display text-xl font-semibold text-ink">Membership</h2>
+          {user.premium_until ? (
+            <p className="mt-1 text-sm text-ink-soft">
+              Your Premium year is valid until{" "}
+              <span className="font-medium text-ink">
+                {new Date(user.premium_until).toLocaleDateString()}
+              </span>
+              .
+            </p>
+          ) : null}
+
+          <label className="mt-5 flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={user.auto_renew}
+              disabled={autoRenewSaving}
+              onChange={(event) => void toggleAutoRenew(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-line text-accent focus:ring-accent"
+            />
+            <span className="text-sm text-ink-soft">
+              <span className="font-medium text-ink">Auto-renew reminders</span>
+              <br />
+              We&apos;ll remind you by email and in your alerts a few days before your year
+              ends. You are never charged automatically&nbsp;— renewing is a quick manual
+              payment that adds another 365 days.
+            </span>
+          </label>
+          {autoRenewError ? (
+            <p className="mt-2 text-sm text-danger">{autoRenewError}</p>
+          ) : null}
+
+          <div className="mt-6">
+            {renewing ? (
+              <PremiumPaywall title="Renew membership" renew compact />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setRenewing(true)}
+                className="rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+              >
+                Renew now / extend another year
+              </button>
+            )}
+          </div>
+        </section>
 
         <div className="mt-12 border-t border-line pt-8">
           <button

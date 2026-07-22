@@ -45,8 +45,14 @@ export default function PricingPage() {
               {user.premium_until ? (
                 <p className="mt-2 text-sm text-ink-soft">
                   Valid until {new Date(user.premium_until).toLocaleDateString()}.
+                  {user.auto_renew
+                    ? " Renewal reminders are on."
+                    : " Renewal reminders are off."}
                 </p>
               ) : null}
+              <div className="mt-6">
+                <PremiumPaywall title="Renew membership" renew compact />
+              </div>
               <Link href="/profile" className="mt-4 inline-block text-sm text-accent hover:underline">
                 Go to profile →
               </Link>

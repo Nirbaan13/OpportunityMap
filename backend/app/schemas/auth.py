@@ -28,3 +28,8 @@ class UserResponse(BaseModel):
     has_profile: bool = False
     is_premium: bool = False
     premium_until: datetime | None = None
+    auto_renew: bool = True
+
+
+class UpdateAutoRenewRequest(BaseModel):
+    auto_renew: bool

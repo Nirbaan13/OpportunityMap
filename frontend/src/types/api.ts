@@ -6,6 +6,7 @@ export type User = {
   has_profile: boolean;
   is_premium: boolean;
   premium_until: string | null;
+  auto_renew: boolean;
 };
 
 export type TokenResponse = {
