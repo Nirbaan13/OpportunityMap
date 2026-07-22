@@ -16,7 +16,7 @@ import {
   getStoredToken,
   setStoredToken,
 } from "@/lib/auth-storage";
-import type { User } from "@/types/api";
+import { ApiError, type User } from "@/types/api";
 
 type AuthContextValue = {
   user: User | null;
@@ -26,6 +26,7 @@ type AuthContextValue = {
   register: (email: string, password: string) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<User | null>;
+  updateUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -48,11 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(stored);
       setUser(me);
       return me;
-    } catch {
-      clearStoredToken();
-      setToken(null);
-      setUser(null);
-      return null;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearStoredToken();
+        setToken(null);
+        setUser(null);
+        return null;
+      }
+      throw error;
     }
   }, []);
 
@@ -72,11 +76,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         setToken(stored);
         setUser(me);
-      } catch {
+      } catch (error) {
         if (cancelled) return;
-        clearStoredToken();
-        setToken(null);
-        setUser(null);
+        if (error instanceof ApiError && error.status === 401) {
+          clearStoredToken();
+          setToken(null);
+          setUser(null);
+        } else {
+          setToken(stored);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -107,9 +115,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateUser = useCallback((nextUser: User) => {
+    setUser(nextUser);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, token, loading, login, register, logout, refreshUser }),
-    [user, token, loading, login, register, logout, refreshUser],
+    () => ({ user, token, loading, login, register, logout, refreshUser, updateUser }),
+    [user, token, loading, login, register, logout, refreshUser, updateUser],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

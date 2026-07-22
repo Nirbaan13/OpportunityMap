@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 
 from app.api.v1.auth import _to_user_response
@@ -10,7 +10,9 @@ from app.schemas.auth import UserResponse
 from app.schemas.payment import (
     CreateOrderResponse,
     PaymentConfigResponse,
+    PaymentStatusResponse,
     VerifyPaymentRequest,
+    WebhookResponse,
 )
 from app.services import payment_service
 
@@ -26,7 +28,7 @@ def payment_config() -> PaymentConfigResponse:
         currency="INR",
         razorpay_enabled=settings.razorpay_enabled,
         razorpay_key_id=settings.razorpay_key_id or None,
-        dev_unlock_available=settings.debug and not settings.razorpay_enabled,
+        dev_unlock_available=settings.dev_unlock_available,
         description=(
             f"Yearly ₹{settings.premium_price_inr} membership for profile, "
             "personalized recommendations, saved opportunities, and deadline alerts."
@@ -59,11 +61,41 @@ def verify_payment(
     return _to_user_response(user)
 
 
-@router.post("/dev-unlock", response_model=UserResponse)
-def dev_unlock(
+@router.get("/status/{order_id}", response_model=PaymentStatusResponse)
+def payment_status(
+    order_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> UserResponse:
-    """Testing only: unlock premium when DEBUG=true and Razorpay is not configured."""
-    user = payment_service.dev_unlock(db, current_user)
-    return _to_user_response(user)
+) -> PaymentStatusResponse:
+    return PaymentStatusResponse(
+        **payment_service.reconcile_order(db, current_user, order_id)
+    )
+
+
+@router.post("/webhooks/razorpay", response_model=WebhookResponse)
+async def razorpay_webhook(
+    request: Request,
+    x_razorpay_signature: str = Header(default=""),
+    x_razorpay_event_id: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> WebhookResponse:
+    raw_body = await request.body()
+    payment_service.process_razorpay_webhook(
+        db,
+        raw_body=raw_body,
+        signature=x_razorpay_signature,
+        event_id=x_razorpay_event_id,
+    )
+    return WebhookResponse()
+
+
+if settings.dev_unlock_available:
+
+    @router.post("/dev-unlock", response_model=UserResponse)
+    def dev_unlock(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db),
+    ) -> UserResponse:
+        """Explicit development-only premium unlock."""
+        user = payment_service.dev_unlock(db, current_user)
+        return _to_user_response(user)

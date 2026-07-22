@@ -25,13 +25,21 @@ Membership lasts **365 days** from payment (`users.premium_until`). Paying again
 PREMIUM_PRICE_INR=299
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
 ```
 
-3. Frontend `/pricing` opens Razorpay Checkout, then `POST /api/v1/payments/verify` sets `premium_until` to +1 year.
+3. Configure Razorpay's webhook URL as
+   `https://YOUR-API/api/v1/payments/webhooks/razorpay` for
+   `payment.captured`, `payment.failed`, `payment.refunded`, and `refund.processed`.
+4. Frontend `/pricing` opens Razorpay Checkout. Premium is granted only after
+   Razorpay confirms that the payment is captured; webhooks recover payments if
+   the browser closes before verification completes.
 
 ### Local testing without Razorpay
 
-With `DEBUG=true` and empty Razorpay keys, `/pricing` shows a test unlock that also grants 1 year via `POST /api/v1/payments/dev-unlock`.
+The test unlock is disabled by default. It requires `ENVIRONMENT=development`,
+`DEBUG=true`, `ALLOW_DEV_PREMIUM_UNLOCK=true`, and empty Razorpay keys. It is
+never mounted in production.
 
 ## API
 
@@ -40,7 +48,9 @@ With `DEBUG=true` and empty Razorpay keys, `/pricing` shows a test unlock that a
 | `GET` | `/payments/config` | public | yearly price, whether Razorpay is on |
 | `POST` | `/payments/create-order` | JWT | starts checkout (renew extends +365 days) |
 | `POST` | `/payments/verify` | JWT | verify signature → +365 days |
-| `POST` | `/payments/dev-unlock` | JWT | DEBUG only |
+| `GET` | `/payments/status/{order_id}` | JWT | reconcile interrupted checkout |
+| `POST` | `/payments/webhooks/razorpay` | Razorpay signature | captured/failed/refunded events |
+| `POST` | `/payments/dev-unlock` | JWT | explicit local development only |
 
 Paid routes return **403** if premium has expired: profiles, matches, bookmarks, notifications.
 

@@ -75,16 +75,22 @@ alembic upgrade head
 |------|--------|
 | `DATABASE_URL` | Neon URI |
 | `SECRET_KEY` | long random string |
+| `ENVIRONMENT` | `production` |
 | `DEBUG` | `false` |
+| `ALLOW_DEV_PREMIUM_UNLOCK` | `false` |
 | `CORS_ORIGINS` | temporary `http://localhost:3000` — update after frontend deploys |
 | `FRONTEND_URL` | temporary same |
 | `PREMIUM_PRICE_INR` | `299` |
-| `RAZORPAY_KEY_ID` | optional / empty for now |
-| `RAZORPAY_KEY_SECRET` | optional / empty for now |
+| `RAZORPAY_KEY_ID` | Razorpay test/live Key ID |
+| `RAZORPAY_KEY_SECRET` | matching private API secret |
+| `RAZORPAY_WEBHOOK_SECRET` | separate secret configured for the API webhook |
 
 5. **Deploy**.
 6. Copy the API URL, e.g. `https://opportunitymap-api.vercel.app`
 7. Test: `https://YOUR-API.vercel.app/api/v1/health` → `{"status":"ok"}`
+8. Add a Razorpay webhook pointing to
+   `https://YOUR-API.vercel.app/api/v1/payments/webhooks/razorpay` for captured,
+   failed, refunded, and refund-processed events.
 
 ---
 

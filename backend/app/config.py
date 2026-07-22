@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     cors_origins: str = "http://localhost:3000"
     app_name: str = "OpportunityMap API"
+    environment: str = "development"
     debug: bool = False
+    allow_dev_premium_unlock: bool = False
     access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
     jwt_algorithm: str = "HS256"
 
@@ -38,6 +40,7 @@ class Settings(BaseSettings):
     premium_price_inr: int = 299
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
 
     # SMTP — leave SMTP_HOST empty to skip email (inbox still works)
     smtp_host: str = ""
@@ -54,6 +57,33 @@ class Settings(BaseSettings):
             return normalize_database_url(value)
         return value
 
+    @field_validator("environment")
+    @classmethod
+    def _normalize_environment(cls, value: str) -> str:
+        normalized = value.strip().lower()
+        if normalized not in {"development", "test", "preview", "production"}:
+            raise ValueError("ENVIRONMENT must be development, test, preview, or production")
+        return normalized
+
+    @model_validator(mode="after")
+    def _validate_payment_security(self) -> "Settings":
+        has_key_id = bool(self.razorpay_key_id.strip())
+        has_key_secret = bool(self.razorpay_key_secret.strip())
+        if has_key_id != has_key_secret:
+            raise ValueError("RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be configured together")
+        if self.environment == "production":
+            if self.debug:
+                raise ValueError("DEBUG must be false in production")
+            if self.allow_dev_premium_unlock:
+                raise ValueError("ALLOW_DEV_PREMIUM_UNLOCK cannot be enabled in production")
+            if self.secret_key == "change-me-in-production":
+                raise ValueError("SECRET_KEY must be changed in production")
+            if has_key_id and not self.razorpay_webhook_secret.strip():
+                raise ValueError(
+                    "RAZORPAY_WEBHOOK_SECRET is required when Razorpay is enabled in production"
+                )
+        return self
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
@@ -69,6 +99,15 @@ class Settings(BaseSettings):
     @property
     def razorpay_enabled(self) -> bool:
         return bool(self.razorpay_key_id.strip() and self.razorpay_key_secret.strip())
+
+    @property
+    def dev_unlock_available(self) -> bool:
+        return (
+            self.environment in {"development", "test"}
+            and self.debug
+            and self.allow_dev_premium_unlock
+            and not self.razorpay_enabled
+        )
 
 
 settings = Settings()

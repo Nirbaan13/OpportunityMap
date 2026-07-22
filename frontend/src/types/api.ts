@@ -223,6 +223,13 @@ export type CreateOrderResponse = {
   payment_id: number;
 };
 
+export type PaymentStatus = {
+  order_id: string;
+  status: "created" | "failed" | "paid" | "refunded";
+  is_premium: boolean;
+  premium_until: string | null;
+};
+
 export class ApiError extends Error {
   status: number;
 

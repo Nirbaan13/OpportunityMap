@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -23,6 +25,17 @@ class CreateOrderResponse(BaseModel):
 
 
 class VerifyPaymentRequest(BaseModel):
-    razorpay_order_id: str = Field(min_length=1)
-    razorpay_payment_id: str = Field(min_length=1)
-    razorpay_signature: str = Field(min_length=1)
+    razorpay_order_id: str = Field(min_length=1, max_length=100)
+    razorpay_payment_id: str = Field(min_length=1, max_length=100)
+    razorpay_signature: str = Field(min_length=1, max_length=255)
+
+
+class PaymentStatusResponse(BaseModel):
+    order_id: str
+    status: str
+    is_premium: bool
+    premium_until: datetime | None
+
+
+class WebhookResponse(BaseModel):
+    received: bool = True

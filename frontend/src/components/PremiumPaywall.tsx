@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { api } from "@/lib/api";
@@ -23,11 +23,21 @@ type RazorpayOptions = {
   prefill?: { email?: string };
   handler: (response: RazorpaySuccess) => void;
   theme?: { color?: string };
+  modal?: { ondismiss?: () => void };
+};
+
+type RazorpayFailure = {
+  error?: { description?: string };
+};
+
+type RazorpayInstance = {
+  open: () => void;
+  on: (event: "payment.failed", handler: (response: RazorpayFailure) => void) => void;
 };
 
 declare global {
   interface Window {
-    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
 }
 
@@ -35,8 +45,13 @@ function loadRazorpayScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.reject();
   if (window.Razorpay) return Promise.resolve();
   return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-razorpay="1"]');
+    const existing = document.querySelector<HTMLScriptElement>('script[data-razorpay="1"]');
     if (existing) {
+      if (existing.dataset.state === "error") {
+        existing.remove();
+        void loadRazorpayScript().then(resolve, reject);
+        return;
+      }
       existing.addEventListener("load", () => resolve());
       existing.addEventListener("error", () => reject());
       return;
@@ -45,8 +60,14 @@ function loadRazorpayScript(): Promise<void> {
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     script.dataset.razorpay = "1";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Could not load Razorpay"));
+    script.onload = () => {
+      script.dataset.state = "loaded";
+      resolve();
+    };
+    script.onerror = () => {
+      script.dataset.state = "error";
+      reject(new Error("Could not load Razorpay"));
+    };
     document.body.appendChild(script);
   });
 }
@@ -56,24 +77,46 @@ type PremiumPaywallProps = {
   compact?: boolean;
 };
 
+type CheckoutStage =
+  | "idle"
+  | "creating"
+  | "open"
+  | "verifying"
+  | "recovering"
+  | "success"
+  | "cancelled"
+  | "failed";
+
+const ORDER_STORAGE_PREFIX = "opportunitymap.pendingPayment.";
+const sleep = (milliseconds: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+
 export function PremiumPaywall({
   title = "Unlock premium",
   compact = false,
 }: PremiumPaywallProps) {
-  const { user, token, refreshUser } = useAuth();
+  const { user, token, refreshUser, updateUser } = useAuth();
   const [config, setConfig] = useState<PaymentConfig | null>(null);
-  const [pending, setPending] = useState(false);
+  const [configError, setConfigError] = useState(false);
+  const [stage, setStage] = useState<CheckoutStage>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const done = stage === "success";
+  const pending = ["creating", "open", "verifying", "recovering"].includes(stage);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const data = await api.paymentConfig();
-        if (!cancelled) setConfig(data);
+        if (!cancelled) {
+          setConfig(data);
+          setConfigError(false);
+        }
       } catch {
-        if (!cancelled) setConfig(null);
+        if (!cancelled) {
+          setConfig(null);
+          setConfigError(true);
+        }
       }
     })();
     return () => {
@@ -81,17 +124,52 @@ export function PremiumPaywall({
     };
   }, []);
 
-  const price = config?.price_inr ?? 299;
+  const orderStorageKey = user ? `${ORDER_STORAGE_PREFIX}${user.id}` : null;
+
+  const reconcile = useCallback(
+    async (orderId: string, attempts = 6): Promise<boolean> => {
+      if (!token) return false;
+      setStage("recovering");
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        try {
+          const result = await api.paymentStatus(token, orderId);
+          if (result.status === "paid" && result.is_premium) {
+            await refreshUser();
+            if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+            setStage("success");
+            return true;
+          }
+          if (result.status === "failed" || result.status === "refunded") break;
+        } catch (reconcileError) {
+          if (reconcileError instanceof ApiError && reconcileError.status === 401) {
+            throw reconcileError;
+          }
+        }
+        await sleep(1500);
+      }
+      return false;
+    },
+    [orderStorageKey, refreshUser, token],
+  );
+
+  useEffect(() => {
+    if (!orderStorageKey || !token || user?.is_premium) return;
+    const pendingOrder = localStorage.getItem(orderStorageKey);
+    if (!pendingOrder) return;
+    void reconcile(pendingOrder, 1).then((paid) => {
+      if (!paid) setStage("idle");
+    });
+  }, [orderStorageKey, reconcile, token, user?.is_premium]);
 
   async function unlock() {
     if (!token) return;
-    setPending(true);
+    setStage("creating");
     setError(null);
     try {
       if (config?.dev_unlock_available) {
-        await api.devUnlockPremium(token);
-        await refreshUser();
-        setDone(true);
+        const unlockedUser = await api.devUnlockPremium(token);
+        updateUser(unlockedUser);
+        setStage("success");
         return;
       }
 
@@ -101,10 +179,12 @@ export function PremiumPaywall({
       }
 
       const order = await api.createPaymentOrder(token);
+      if (orderStorageKey) localStorage.setItem(orderStorageKey, order.order_id);
       await loadRazorpayScript();
       if (!window.Razorpay) throw new Error("Razorpay failed to load");
 
       await new Promise<void>((resolve, reject) => {
+        let checkoutFinished = false;
         const rzp = new window.Razorpay!({
           key: order.key_id,
           amount: order.amount_paise,
@@ -114,27 +194,54 @@ export function PremiumPaywall({
           order_id: order.order_id,
           prefill: { email: order.prefill_email },
           theme: { color: "#0f766e" },
+          modal: {
+            ondismiss: () => {
+              if (checkoutFinished) return;
+              checkoutFinished = true;
+              if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+              setStage("cancelled");
+              resolve();
+            },
+          },
           handler: (response) => {
+            if (checkoutFinished) return;
+            checkoutFinished = true;
+            setStage("verifying");
             void (async () => {
               try {
-                await api.verifyPayment(token, response);
-                await refreshUser();
-                setDone(true);
+                const paidUser = await api.verifyPayment(token, response);
+                updateUser(paidUser);
+                if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+                setStage("success");
                 resolve();
-              } catch (err) {
-                reject(err);
+              } catch (verifyError) {
+                const recovered = await reconcile(order.order_id);
+                if (recovered) {
+                  resolve();
+                } else {
+                  reject(verifyError);
+                }
               }
             })();
           },
         });
+        rzp.on("payment.failed", (response) => {
+          if (checkoutFinished) return;
+          checkoutFinished = true;
+          if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+          setStage("failed");
+          reject(new Error(response.error?.description || "Payment was declined."));
+        });
+        setStage("open");
         rzp.open();
-        // User may close checkout without paying — clear pending on a short delay
-        setTimeout(() => setPending(false), 800);
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Payment failed. Try again.");
-    } finally {
-      setPending(false);
+      setStage("failed");
+      setError(
+        err instanceof ApiError || err instanceof Error
+          ? err.message
+          : "Payment failed. Try again.",
+      );
     }
   }
 
@@ -166,7 +273,7 @@ export function PremiumPaywall({
 
   if (user.is_premium || done) {
     return (
-      <p className="text-sm text-accent">Premium unlocked — reload if this page still looks locked.</p>
+      <p className="text-sm text-accent">Premium unlocked. Your account is ready to use.</p>
     );
   }
 
@@ -175,10 +282,17 @@ export function PremiumPaywall({
       <p className="font-display text-lg font-semibold text-ink">{title}</p>
       <p className="mt-2 text-sm text-ink-soft">
         {config?.description ??
-          `Yearly ₹${price} membership for profile, recommendations, saved opportunities, and alerts.`}
+          "Yearly membership for profile, recommendations, saved opportunities, and alerts."}
       </p>
-      <p className="mt-3 font-display text-2xl font-bold text-ink">₹{price}<span className="text-base font-medium text-ink-soft"> / year</span></p>
-      <p className="mt-1 text-xs text-ink-soft">Billed yearly · change price later via server config</p>
+      {config ? (
+        <p className="mt-3 font-display text-2xl font-bold text-ink">
+          ₹{config.price_inr}
+          <span className="text-base font-medium text-ink-soft"> / 365 days</span>
+        </p>
+      ) : null}
+      <p className="mt-1 text-xs text-ink-soft">
+        One-time annual purchase · no automatic renewal
+      </p>
       <button
         type="button"
         disabled={pending || !config}
@@ -186,11 +300,25 @@ export function PremiumPaywall({
         className="mt-4 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-ink-soft disabled:opacity-50"
       >
         {pending
-          ? "Working…"
+          ? stage === "open"
+            ? "Complete payment in Razorpay…"
+            : stage === "verifying" || stage === "recovering"
+              ? "Confirming payment…"
+              : "Preparing checkout…"
           : config?.dev_unlock_available
-            ? `Start yearly (test) — ₹${price}`
-            : `Pay ₹${price} / year`}
+            ? `Start yearly (test) — ₹${config.price_inr}`
+            : config
+              ? `Pay ₹${config.price_inr}`
+              : "Loading price…"}
       </button>
+      {stage === "cancelled" ? (
+        <p className="mt-3 text-sm text-ink-soft">Checkout cancelled. You were not charged.</p>
+      ) : null}
+      {configError ? (
+        <p className="mt-3 text-sm text-danger">
+          Could not load secure payment details. Refresh and try again.
+        </p>
+      ) : null}
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
     </div>
   );

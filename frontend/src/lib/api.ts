@@ -15,6 +15,7 @@ import {
   OpportunityListParams,
   OpportunityListResponse,
   PaymentConfig,
+  PaymentStatus,
   Profile,
   ProfileWriteRequest,
   TokenResponse,
@@ -289,6 +290,12 @@ export const api = {
       method: "POST",
       token,
       body: payload,
+    });
+  },
+
+  paymentStatus(token: string, orderId: string) {
+    return request<PaymentStatus>(`/payments/status/${encodeURIComponent(orderId)}`, {
+      token,
     });
   },
 

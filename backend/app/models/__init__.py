@@ -4,7 +4,7 @@ from app.models.enums import NotificationType, OpportunityType
 from app.models.field import Field
 from app.models.notification import Notification
 from app.models.opportunity import Opportunity, opportunity_fields
-from app.models.payment import Payment
+from app.models.payment import Payment, PaymentAttempt, PaymentWebhookEvent, PremiumGrant
 from app.models.profile import Profile, ProfileActivity, profile_activities, profile_fields
 from app.models.user import User
 
@@ -17,8 +17,11 @@ __all__ = [
     "Opportunity",
     "OpportunityType",
     "Payment",
+    "PaymentAttempt",
+    "PaymentWebhookEvent",
     "Profile",
     "ProfileActivity",
+    "PremiumGrant",
     "User",
     "opportunity_fields",
     "profile_activities",
