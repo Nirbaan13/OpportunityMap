@@ -85,7 +85,7 @@ alembic upgrade head
 | `RAZORPAY_KEY_ID` | Razorpay test/live Key ID |
 | `RAZORPAY_KEY_SECRET` | matching private API secret |
 | `POLAR_ACCESS_TOKEN` | Polar organization access token |
-| `POLAR_PRODUCT_ID` | Polar one-time product ID |
+| `POLAR_PRODUCT_ID` | Polar yearly subscription product ID |
 | `POLAR_WEBHOOK_SECRET` | Polar webhook signing secret |
 | `RAZORPAY_WEBHOOK_SECRET` | separate secret configured for the API webhook |
 

@@ -358,12 +358,14 @@ export function PremiumPaywall({
       ) : null}
       {usePolar ? (
         <p className="mt-3 text-sm text-ink-soft">
-          Outside India? Continue to secure international checkout. Pricing is shown on the
-          next screen.
+          Outside India? Continue to secure international yearly checkout. Pricing is shown
+          on the next screen.
         </p>
       ) : null}
       <p className="mt-1 text-xs text-ink-soft">
-        One-time annual purchase · no automatic charge
+        {usePolar
+          ? "Yearly subscription billed internationally · cancel anytime from Polar"
+          : "One-time annual purchase · no automatic charge"}
       </p>
       <button
         type="button"

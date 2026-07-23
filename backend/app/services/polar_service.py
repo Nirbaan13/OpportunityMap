@@ -1,4 +1,4 @@
-"""Polar international checkout (merchant-of-record) for non-India buyers."""
+"""Polar international yearly subscription checkout for non-India buyers."""
 
 from __future__ import annotations
 
@@ -50,6 +50,7 @@ def _polar_request(
 
 
 def create_checkout(db: Session, user: User) -> dict[str, str]:
+    """Start Polar checkout for the configured yearly subscription product."""
     if not settings.polar_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -65,7 +66,7 @@ def create_checkout(db: Session, user: User) -> dict[str, str]:
         "metadata": {
             "user_id": str(user.id),
             "email": user.email,
-            "plan": "yearly",
+            "plan": "yearly_subscription",
         },
     }
     checkout = _polar_request("POST", "/checkouts/", payload)
@@ -76,7 +77,6 @@ def create_checkout(db: Session, user: User) -> dict[str, str]:
             detail="Polar checkout URL missing",
         )
 
-    # Local pending row for audit / reconciliation.
     checkout_id = str(checkout.get("id") or "")
     payment = Payment(
         user_id=user.id,
@@ -125,8 +125,8 @@ def verify_webhook_signature(
     return False
 
 
-def _user_from_order(db: Session, order: dict[str, Any]) -> User | None:
-    metadata = order.get("metadata") or {}
+def _user_from_payload(db: Session, entity: dict[str, Any]) -> User | None:
+    metadata = entity.get("metadata") or {}
     if isinstance(metadata, dict):
         raw_user_id = metadata.get("user_id")
         if isinstance(raw_user_id, str) and raw_user_id.isdigit():
@@ -134,13 +134,10 @@ def _user_from_order(db: Session, order: dict[str, Any]) -> User | None:
             if user is not None:
                 return user
 
-    customer = order.get("customer") or {}
-    external_id = (
-        order.get("external_customer_id")
-        or customer.get("external_id")
-        if isinstance(customer, dict)
-        else None
-    )
+    customer = entity.get("customer") or {}
+    external_id = entity.get("external_customer_id")
+    if external_id is None and isinstance(customer, dict):
+        external_id = customer.get("external_id")
     if isinstance(external_id, str) and external_id.isdigit():
         user = db.scalar(select(User).where(User.id == int(external_id)))
         if user is not None:
@@ -155,11 +152,21 @@ def _user_from_order(db: Session, order: dict[str, Any]) -> User | None:
 
 
 def _apply_paid_order(db: Session, order: dict[str, Any]) -> None:
+    """Grant +365 days for subscription create and each yearly renewal cycle."""
     order_id = str(order.get("id") or "")
     if not order_id:
         raise HTTPException(status_code=400, detail="Polar order id missing")
 
-    user = _user_from_order(db, order)
+    billing_reason = str(order.get("billing_reason") or "")
+    if billing_reason and billing_reason not in {
+        "purchase",
+        "subscription_create",
+        "subscription_cycle",
+        "subscription_update",
+    }:
+        return
+
+    user = _user_from_payload(db, order)
     if user is None:
         raise HTTPException(status_code=404, detail="Polar payment user not found")
 
@@ -233,6 +240,45 @@ def _apply_paid_order(db: Session, order: dict[str, Any]) -> None:
     recompute_premium(db, user)
 
 
+def _handle_subscription_canceled(db: Session, subscription: dict[str, Any]) -> None:
+    """Customer canceled — keep current year, stop treating as auto-renewing."""
+    user = _user_from_payload(db, subscription)
+    if user is None:
+        return
+    user.auto_renew = False
+
+
+def _handle_subscription_revoked(db: Session, subscription: dict[str, Any]) -> None:
+    """Subscription fully ended — revoke Polar-funded grants and recompute."""
+    user = _user_from_payload(db, subscription)
+    if user is None:
+        return
+    user.auto_renew = False
+    now = datetime.now(UTC)
+    polar_payments = db.scalars(
+        select(Payment).where(Payment.user_id == user.id, Payment.provider == "polar")
+    ).all()
+    payment_ids = [payment.id for payment in polar_payments]
+    if not payment_ids:
+        recompute_premium(db, user, now=now)
+        return
+    attempts = db.scalars(
+        select(PaymentAttempt).where(PaymentAttempt.payment_id.in_(payment_ids))
+    ).all()
+    attempt_ids = [attempt.id for attempt in attempts]
+    if attempt_ids:
+        grants = db.scalars(
+            select(PremiumGrant).where(
+                PremiumGrant.payment_attempt_id.in_(attempt_ids),
+                PremiumGrant.revoked_at.is_(None),
+            )
+        ).all()
+        for grant in grants:
+            grant.revoked_at = now
+            grant.revocation_reason = "Polar subscription revoked"
+    recompute_premium(db, user, now=now)
+
+
 def process_webhook(
     db: Session,
     *,
@@ -276,11 +322,22 @@ def process_webhook(
     db.add(event)
     db.flush()
 
+    data = payload.get("data")
     if event_type == "order.paid":
-        order = payload.get("data")
-        if not isinstance(order, dict):
+        if not isinstance(data, dict):
             raise HTTPException(status_code=400, detail="Polar order payload missing")
-        _apply_paid_order(db, order)
+        _apply_paid_order(db, data)
+    elif event_type == "subscription.canceled":
+        if isinstance(data, dict):
+            _handle_subscription_canceled(db, data)
+    elif event_type == "subscription.uncanceled":
+        if isinstance(data, dict):
+            user = _user_from_payload(db, data)
+            if user is not None:
+                user.auto_renew = True
+    elif event_type == "subscription.revoked":
+        if isinstance(data, dict):
+            _handle_subscription_revoked(db, data)
 
     event.processed_at = datetime.now(UTC)
     db.commit()

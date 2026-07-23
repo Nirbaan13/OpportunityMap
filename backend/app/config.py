@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
-    # Polar (international checkout). Create a $3.99 one-time product in Polar dashboard.
+    # Polar (international yearly subscription). Create a yearly $3.99 product in Polar.
     polar_access_token: str = ""
     polar_product_id: str = ""
     polar_webhook_secret: str = ""
