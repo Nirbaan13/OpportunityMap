@@ -208,6 +208,7 @@ export type PaymentConfig = {
   amount_paise: number;
   currency: string;
   razorpay_enabled: boolean;
+  polar_enabled: boolean;
   razorpay_key_id: string | null;
   dev_unlock_available: boolean;
   description: string;

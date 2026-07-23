@@ -77,12 +77,19 @@ def _razorpay_request(
         ) from exc
 
 
-def create_razorpay_order(db: Session, user: User) -> dict:
+def create_razorpay_order(db: Session, user: User, *, currency: str = "INR") -> dict:
     sync_premium_flag(user)
     if not settings.razorpay_enabled:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Payments are not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+        )
+
+    currency = currency.upper().strip()
+    if currency != "INR":
+        raise HTTPException(
+            status_code=400,
+            detail="Razorpay checkout is INR only. Use international checkout outside India.",
         )
 
     amount = settings.premium_amount_paise

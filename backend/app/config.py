@@ -36,11 +36,18 @@ class Settings(BaseSettings):
     # Public site URL used in reminder emails
     frontend_url: str = "http://localhost:3000"
 
-    # Premium unlock (INR / year). Change PREMIUM_PRICE_INR later without code changes.
+    # Premium unlock. Change prices without code changes.
     premium_price_inr: int = 299
+    # Used for Polar international product amount recording (not shown on site).
+    premium_price_usd: float = 3.99
     razorpay_key_id: str = ""
     razorpay_key_secret: str = ""
     razorpay_webhook_secret: str = ""
+    # Polar (international checkout). Create a $3.99 one-time product in Polar dashboard.
+    polar_access_token: str = ""
+    polar_product_id: str = ""
+    polar_webhook_secret: str = ""
+    polar_api_base: str = "https://api.polar.sh/v1"
 
     # SMTP — leave SMTP_HOST empty to skip email (inbox still works)
     smtp_host: str = ""
@@ -97,8 +104,17 @@ class Settings(BaseSettings):
         return max(100, self.premium_price_inr) * 100
 
     @property
+    def premium_amount_usd_cents(self) -> int:
+        cents = int(round(max(0.5, self.premium_price_usd) * 100))
+        return max(50, cents)
+
+    @property
     def razorpay_enabled(self) -> bool:
         return bool(self.razorpay_key_id.strip() and self.razorpay_key_secret.strip())
+
+    @property
+    def polar_enabled(self) -> bool:
+        return bool(self.polar_access_token.strip() and self.polar_product_id.strip())
 
     @property
     def dev_unlock_available(self) -> bool:

@@ -81,8 +81,12 @@ alembic upgrade head
 | `CORS_ORIGINS` | temporary `http://localhost:3000` — update after frontend deploys |
 | `FRONTEND_URL` | temporary same |
 | `PREMIUM_PRICE_INR` | `299` |
+| `PREMIUM_PRICE_USD` | `3.99` (Polar product amount; not shown on site) |
 | `RAZORPAY_KEY_ID` | Razorpay test/live Key ID |
 | `RAZORPAY_KEY_SECRET` | matching private API secret |
+| `POLAR_ACCESS_TOKEN` | Polar organization access token |
+| `POLAR_PRODUCT_ID` | Polar one-time product ID |
+| `POLAR_WEBHOOK_SECRET` | Polar webhook signing secret |
 | `RAZORPAY_WEBHOOK_SECRET` | separate secret configured for the API webhook |
 
 5. **Deploy**.

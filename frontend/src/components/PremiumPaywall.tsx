@@ -93,6 +93,17 @@ const ORDER_STORAGE_PREFIX = "opportunitymap.pendingPayment.";
 const sleep = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 
+function guessIsIndia(): boolean {
+  try {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timeZone === "Asia/Kolkata" || timeZone === "Asia/Calcutta") return true;
+  } catch {
+    // ignore
+  }
+  const language = (navigator.language || "").toLowerCase();
+  return language === "hi-in" || language === "en-in" || language.endsWith("-in");
+}
+
 export function PremiumPaywall({
   title = "Unlock premium",
   compact = false,
@@ -101,10 +112,17 @@ export function PremiumPaywall({
   const { user, token, refreshUser, updateUser } = useAuth();
   const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [configError, setConfigError] = useState(false);
+  const [isIndia, setIsIndia] = useState(true);
+  const [forceIndiaCheckout, setForceIndiaCheckout] = useState(false);
   const [stage, setStage] = useState<CheckoutStage>("idle");
   const [error, setError] = useState<string | null>(null);
   const done = stage === "success";
   const pending = ["creating", "open", "verifying", "recovering"].includes(stage);
+  const usePolar = Boolean(config?.polar_enabled && !isIndia && !forceIndiaCheckout);
+
+  useEffect(() => {
+    setIsIndia(guessIsIndia());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +144,21 @@ export function PremiumPaywall({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("polar") !== "success" || !token) return;
+    void (async () => {
+      setStage("recovering");
+      try {
+        await refreshUser();
+        setStage("success");
+      } catch {
+        setStage("idle");
+      }
+    })();
+  }, [refreshUser, token]);
 
   const orderStorageKey = user ? `${ORDER_STORAGE_PREFIX}${user.id}` : null;
 
@@ -164,6 +197,80 @@ export function PremiumPaywall({
     });
   }, [orderStorageKey, reconcile, renew, token, user?.is_premium]);
 
+  async function unlockWithRazorpay() {
+    if (!token || !config) return;
+    if (!config.razorpay_enabled) {
+      setError("Payments are not configured yet. Ask the admin to add Razorpay keys.");
+      setStage("failed");
+      return;
+    }
+
+    const order = await api.createPaymentOrder(token, "INR");
+    if (orderStorageKey) localStorage.setItem(orderStorageKey, order.order_id);
+    await loadRazorpayScript();
+    if (!window.Razorpay) throw new Error("Razorpay failed to load");
+
+    await new Promise<void>((resolve, reject) => {
+      let checkoutFinished = false;
+      const rzp = new window.Razorpay!({
+        key: order.key_id,
+        amount: order.amount_paise,
+        currency: order.currency,
+        name: order.name,
+        description: order.description,
+        order_id: order.order_id,
+        prefill: { email: order.prefill_email },
+        theme: { color: "#0f766e" },
+        modal: {
+          ondismiss: () => {
+            if (checkoutFinished) return;
+            checkoutFinished = true;
+            if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+            setStage("cancelled");
+            resolve();
+          },
+        },
+        handler: (response) => {
+          if (checkoutFinished) return;
+          checkoutFinished = true;
+          setStage("verifying");
+          void (async () => {
+            try {
+              const paidUser = await api.verifyPayment(token, response);
+              updateUser(paidUser);
+              if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+              setStage("success");
+              resolve();
+            } catch (verifyError) {
+              const recovered = await reconcile(order.order_id);
+              if (recovered) {
+                resolve();
+              } else {
+                reject(verifyError);
+              }
+            }
+          })();
+        },
+      });
+      rzp.on("payment.failed", (response) => {
+        if (checkoutFinished) return;
+        checkoutFinished = true;
+        if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+        setStage("failed");
+        reject(new Error(response.error?.description || "Payment was declined."));
+      });
+      setStage("open");
+      rzp.open();
+    });
+  }
+
+  async function unlockWithPolar() {
+    if (!token) return;
+    const { checkout_url } = await api.createPolarCheckout(token);
+    setStage("open");
+    window.location.assign(checkout_url);
+  }
+
   async function unlock() {
     if (!token) return;
     setStage("creating");
@@ -176,68 +283,12 @@ export function PremiumPaywall({
         return;
       }
 
-      if (!config?.razorpay_enabled) {
-        setError("Payments are not configured yet. Ask the admin to add Razorpay keys.");
+      if (usePolar) {
+        await unlockWithPolar();
         return;
       }
 
-      const order = await api.createPaymentOrder(token);
-      if (orderStorageKey) localStorage.setItem(orderStorageKey, order.order_id);
-      await loadRazorpayScript();
-      if (!window.Razorpay) throw new Error("Razorpay failed to load");
-
-      await new Promise<void>((resolve, reject) => {
-        let checkoutFinished = false;
-        const rzp = new window.Razorpay!({
-          key: order.key_id,
-          amount: order.amount_paise,
-          currency: order.currency,
-          name: order.name,
-          description: order.description,
-          order_id: order.order_id,
-          prefill: { email: order.prefill_email },
-          theme: { color: "#0f766e" },
-          modal: {
-            ondismiss: () => {
-              if (checkoutFinished) return;
-              checkoutFinished = true;
-              if (orderStorageKey) localStorage.removeItem(orderStorageKey);
-              setStage("cancelled");
-              resolve();
-            },
-          },
-          handler: (response) => {
-            if (checkoutFinished) return;
-            checkoutFinished = true;
-            setStage("verifying");
-            void (async () => {
-              try {
-                const paidUser = await api.verifyPayment(token, response);
-                updateUser(paidUser);
-                if (orderStorageKey) localStorage.removeItem(orderStorageKey);
-                setStage("success");
-                resolve();
-              } catch (verifyError) {
-                const recovered = await reconcile(order.order_id);
-                if (recovered) {
-                  resolve();
-                } else {
-                  reject(verifyError);
-                }
-              }
-            })();
-          },
-        });
-        rzp.on("payment.failed", (response) => {
-          if (checkoutFinished) return;
-          checkoutFinished = true;
-          if (orderStorageKey) localStorage.removeItem(orderStorageKey);
-          setStage("failed");
-          reject(new Error(response.error?.description || "Payment was declined."));
-        });
-        setStage("open");
-        rzp.open();
-      });
+      await unlockWithRazorpay();
     } catch (err) {
       setStage("failed");
       setError(
@@ -299,10 +350,16 @@ export function PremiumPaywall({
           : config?.description ??
             "Yearly membership for profile, recommendations, saved opportunities, and alerts."}
       </p>
-      {config ? (
+      {config && !usePolar ? (
         <p className="mt-3 font-display text-2xl font-bold text-ink">
           ₹{config.price_inr}
           <span className="text-base font-medium text-ink-soft"> / 365 days</span>
+        </p>
+      ) : null}
+      {usePolar ? (
+        <p className="mt-3 text-sm text-ink-soft">
+          Outside India? Continue to secure international checkout. Pricing is shown on the
+          next screen.
         </p>
       ) : null}
       <p className="mt-1 text-xs text-ink-soft">
@@ -310,24 +367,47 @@ export function PremiumPaywall({
       </p>
       <button
         type="button"
-        disabled={pending || !config}
+        disabled={pending || !config || (usePolar ? !config.polar_enabled : !config.razorpay_enabled && !config.dev_unlock_available)}
         onClick={() => void unlock()}
         className="mt-4 rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-paper transition hover:bg-ink-soft disabled:opacity-50"
       >
         {pending
           ? stage === "open"
-            ? "Complete payment in Razorpay…"
+            ? usePolar
+              ? "Opening international checkout…"
+              : "Complete payment in Razorpay…"
             : stage === "verifying" || stage === "recovering"
               ? "Confirming payment…"
               : "Preparing checkout…"
           : config?.dev_unlock_available
             ? `Start yearly (test) — ₹${config.price_inr}`
             : config
-              ? renew
-                ? `Renew for ₹${config.price_inr}`
-                : `Pay ₹${config.price_inr}`
+              ? usePolar
+                ? renew
+                  ? "Renew outside India"
+                  : "Continue outside India"
+                : renew
+                  ? `Renew for ₹${config.price_inr}`
+                  : `Pay ₹${config.price_inr}`
               : "Loading price…"}
       </button>
+      {!isIndia && config?.polar_enabled ? (
+        <button
+          type="button"
+          onClick={() => setForceIndiaCheckout((value) => !value)}
+          className="mt-3 block text-xs font-medium text-accent hover:underline"
+        >
+          {forceIndiaCheckout
+            ? "Use international checkout instead"
+            : "In India? Pay with Razorpay instead"}
+        </button>
+      ) : null}
+      {!isIndia && !config?.polar_enabled ? (
+        <p className="mt-3 text-xs text-ink-soft">
+          International checkout is being set up. You can still pay with Razorpay in INR if
+          your card supports it.
+        </p>
+      ) : null}
       {stage === "cancelled" ? (
         <p className="mt-3 text-sm text-ink-soft">Checkout cancelled. You were not charged.</p>
       ) : null}

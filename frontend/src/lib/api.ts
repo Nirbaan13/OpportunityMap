@@ -279,8 +279,16 @@ export const api = {
     return request<PaymentConfig>("/payments/config");
   },
 
-  createPaymentOrder(token: string) {
+  createPaymentOrder(token: string, currency: "INR" = "INR") {
     return request<CreateOrderResponse>("/payments/create-order", {
+      method: "POST",
+      token,
+      body: { currency },
+    });
+  },
+
+  createPolarCheckout(token: string) {
+    return request<{ checkout_url: string }>("/payments/polar/create-checkout", {
       method: "POST",
       token,
     });

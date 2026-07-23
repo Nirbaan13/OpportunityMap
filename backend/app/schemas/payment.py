@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -8,9 +9,14 @@ class PaymentConfigResponse(BaseModel):
     amount_paise: int
     currency: str = "INR"
     razorpay_enabled: bool
+    polar_enabled: bool
     razorpay_key_id: str | None = None
     dev_unlock_available: bool
     description: str
+
+
+class CreateOrderRequest(BaseModel):
+    currency: Literal["INR"] = "INR"
 
 
 class CreateOrderResponse(BaseModel):
@@ -22,6 +28,10 @@ class CreateOrderResponse(BaseModel):
     description: str
     prefill_email: str
     payment_id: int
+
+
+class PolarCheckoutResponse(BaseModel):
+    checkout_url: str
 
 
 class VerifyPaymentRequest(BaseModel):

@@ -2,7 +2,9 @@
 
 Browse opportunities is **free**. Profile, recommendations (“For you”), Saved, Remind me, and deadline notifications require a **yearly** premium membership.
 
-Default price: **₹299 / year** — change with `PREMIUM_PRICE_INR` in `backend/.env` (no code change).
+Default price: **₹299 / year** (India via Razorpay). International buyers use Polar
+checkout (price configured in Polar, not shown on-site). Change INR with
+`PREMIUM_PRICE_INR`.
 
 Membership lasts **365 days** from payment (`users.premium_until`). Paying again after expiry starts a new year (or extends from remaining time if you renew early).
 
@@ -23,16 +25,23 @@ Membership lasts **365 days** from payment (`users.premium_until`). Paying again
 
 ```env
 PREMIUM_PRICE_INR=299
+PREMIUM_PRICE_USD=3.99
 RAZORPAY_KEY_ID=rzp_test_...
 RAZORPAY_KEY_SECRET=...
 RAZORPAY_WEBHOOK_SECRET=...
+POLAR_ACCESS_TOKEN=...
+POLAR_PRODUCT_ID=...
+POLAR_WEBHOOK_SECRET=...
+POLAR_API_BASE=https://api.polar.sh/v1
 ```
 
 3. Configure Razorpay's webhook URL as
    `https://YOUR-API/api/v1/payments/webhooks/razorpay` for
    `payment.captured`, `payment.failed`, `payment.refunded`, and `refund.processed`.
-4. Frontend `/pricing` opens Razorpay Checkout. Premium is granted only after
-   Razorpay confirms that the payment is captured; webhooks recover payments if
+4. In Polar, create a one-time product (set $3.99 there), then webhook:
+   `https://YOUR-API/api/v1/payments/webhooks/polar` for `order.paid`.
+5. Frontend `/pricing` opens Razorpay for India and Polar for outside India.
+   Premium is granted after payment is confirmed; webhooks recover payments if
    the browser closes before verification completes.
 
 ### Local testing without Razorpay
@@ -45,11 +54,13 @@ never mounted in production.
 
 | Method | Path | Auth | Notes |
 |--------|------|------|-------|
-| `GET` | `/payments/config` | public | yearly price, whether Razorpay is on |
-| `POST` | `/payments/create-order` | JWT | starts checkout (renew extends +365 days) |
-| `POST` | `/payments/verify` | JWT | verify signature → +365 days |
-| `GET` | `/payments/status/{order_id}` | JWT | reconcile interrupted checkout |
+| `GET` | `/payments/config` | public | yearly price, whether Razorpay/Polar is on |
+| `POST` | `/payments/create-order` | JWT | starts Razorpay checkout (INR) |
+| `POST` | `/payments/polar/create-checkout` | JWT | starts Polar international checkout |
+| `POST` | `/payments/verify` | JWT | verify Razorpay signature → +365 days |
+| `GET` | `/payments/status/{order_id}` | JWT | reconcile interrupted Razorpay checkout |
 | `POST` | `/payments/webhooks/razorpay` | Razorpay signature | captured/failed/refunded events |
+| `POST` | `/payments/webhooks/polar` | Polar signature | `order.paid` grants premium |
 | `POST` | `/payments/dev-unlock` | JWT | explicit local development only |
 
 Paid routes return **403** if premium has expired: profiles, matches, bookmarks, notifications.
