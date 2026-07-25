@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
+import { BrandMark } from "@/components/BrandMark";
 import { UserMenu } from "@/components/UserMenu";
 import { api } from "@/lib/api";
 
@@ -58,9 +59,11 @@ export function SiteHeader() {
     >
       <Link
         href="/"
-        className="min-w-0 truncate font-display text-lg font-bold tracking-tight sm:text-2xl"
+        aria-label="OpportunityMap home"
+        className="flex min-w-0 items-center gap-2 font-display text-lg font-bold tracking-tight sm:text-2xl"
       >
-        OpportunityMap
+        <BrandMark className="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
+        <span className="truncate">OpportunityMap</span>
       </Link>
 
       {/* Desktop nav */}
