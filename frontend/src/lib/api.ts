@@ -19,6 +19,7 @@ import {
   PaymentStatus,
   Profile,
   ProfileWriteRequest,
+  RoadmapAlternativesResponse,
   RoadmapResponse,
   TokenResponse,
   User,
@@ -218,6 +219,19 @@ export const api = {
 
   getRoadmap(token: string) {
     return request<RoadmapResponse>("/roadmap", { token });
+  },
+
+  getRoadmapAlternatives(
+    token: string,
+    params: { excludeIds: number[]; fieldSlug?: string },
+  ) {
+    return request<RoadmapAlternativesResponse>(
+      `/roadmap/alternatives${toQuery({
+        exclude_ids: params.excludeIds.join(","),
+        field_slug: params.fieldSlug,
+      })}`,
+      { token },
+    );
   },
 
   listBookmarks(token: string, params: BookmarkListParams = {}) {

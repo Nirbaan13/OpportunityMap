@@ -270,9 +270,20 @@ export default function OpportunitiesPage() {
   return (
     <main className="atmosphere min-h-[calc(100dvh-4rem)]">
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-10 sm:py-10">
-        <p className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">
-          Discover
-        </p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-ink-soft transition hover:text-accent sm:text-sm"
+          >
+            Home
+          </Link>
+          <span className="text-ink-soft/50" aria-hidden>
+            /
+          </span>
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.18em] text-accent sm:text-sm">
+            Discover
+          </p>
+        </div>
         <h1 className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:mt-3 sm:text-4xl">
           Opportunities
         </h1>

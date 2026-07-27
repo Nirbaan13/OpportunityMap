@@ -8,7 +8,45 @@ import { useAuth } from "@/components/AuthProvider";
 import { PremiumPaywall } from "@/components/PremiumPaywall";
 import { RoadPath } from "@/components/RoadPath";
 import { api } from "@/lib/api";
-import { ApiError, type RoadmapResponse, type RoadmapStop } from "@/types/api";
+import {
+  ApiError,
+  type MatchItem,
+  type RoadmapResponse,
+  type RoadmapStop,
+} from "@/types/api";
+
+function stopFromMatch(
+  match: MatchItem,
+  primaryField: RoadmapStop["primary_field"],
+  order: number,
+  interestCount: number,
+): RoadmapStop {
+  return {
+    order,
+    opportunity_id: match.opportunity.id,
+    match,
+    has_deadline: match.opportunity.deadline_at != null,
+    primary_field: primaryField,
+    is_strong_match: interestCount > 0 && match.shared_fields.length >= interestCount,
+    is_completed: false,
+  };
+}
+
+function reorderStops(stops: RoadmapStop[]): RoadmapStop[] {
+  const dated = stops
+    .filter((s) => s.has_deadline)
+    .sort((a, b) => {
+      const aTs = a.match.opportunity.deadline_at
+        ? new Date(a.match.opportunity.deadline_at).getTime()
+        : 0;
+      const bTs = b.match.opportunity.deadline_at
+        ? new Date(b.match.opportunity.deadline_at).getTime()
+        : 0;
+      return aTs - bTs;
+    });
+  const undated = stops.filter((s) => !s.has_deadline);
+  return [...dated, ...undated].map((stop, i) => ({ ...stop, order: i + 1 }));
+}
 
 export default function RoadmapPage() {
   const { user, token, loading } = useAuth();
@@ -17,6 +55,11 @@ export default function RoadmapPage() {
   const [stops, setStops] = useState<RoadmapStop[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [alternativesForId, setAlternativesForId] = useState<number | null>(null);
+  const [alternatives, setAlternatives] = useState<MatchItem[]>([]);
+  const [alternativesLoading, setAlternativesLoading] = useState(false);
+  const [alternativesError, setAlternativesError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -67,6 +110,92 @@ export default function RoadmapPage() {
       [next[index], next[swapWith]] = [next[swapWith], next[index]];
       return [...dated, ...next].map((stop, i) => ({ ...stop, order: i + 1 }));
     });
+  }
+
+  async function onChangeStop(opportunityId: number) {
+    if (!token) return;
+    if (alternativesForId === opportunityId) {
+      setAlternativesForId(null);
+      setAlternatives([]);
+      setAlternativesError(null);
+      return;
+    }
+
+    const stop = stops.find((s) => s.opportunity_id === opportunityId);
+    if (!stop) return;
+
+    setAlternativesForId(opportunityId);
+    setAlternatives([]);
+    setAlternativesError(null);
+    setAlternativesLoading(true);
+    try {
+      const data = await api.getRoadmapAlternatives(token, {
+        excludeIds: stops.map((s) => s.opportunity_id),
+        fieldSlug: stop.primary_field.slug,
+      });
+      setAlternatives(data.items);
+      if (data.items.length === 0) {
+        // Fall back to any For-you match not on the road
+        const broader = await api.getRoadmapAlternatives(token, {
+          excludeIds: stops.map((s) => s.opportunity_id),
+        });
+        setAlternatives(broader.items);
+      }
+    } catch (err) {
+      setAlternativesError(
+        err instanceof ApiError ? err.message : "Could not load alternatives.",
+      );
+    } finally {
+      setAlternativesLoading(false);
+    }
+  }
+
+  function onPickAlternative(opportunityId: number, match: MatchItem) {
+    const interestCount = roadmap?.field_plans.length ?? 0;
+    setStops((current) => {
+      const next = current.map((stop) => {
+        if (stop.opportunity_id !== opportunityId) return stop;
+        return stopFromMatch(match, stop.primary_field, stop.order, interestCount);
+      });
+      return reorderStops(next);
+    });
+    setAlternativesForId(null);
+    setAlternatives([]);
+    setAlternativesError(null);
+  }
+
+  async function onMarkFinish(opportunityId: number) {
+    if (!token) return;
+    setBusyId(opportunityId);
+    try {
+      await api.setBookmarkStatus(token, opportunityId, "completed");
+      setStops((current) =>
+        current.map((stop) =>
+          stop.opportunity_id === opportunityId ? { ...stop, is_completed: true } : stop,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not mark as finished.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onUndoFinish(opportunityId: number) {
+    if (!token) return;
+    setBusyId(opportunityId);
+    try {
+      await api.setBookmarkStatus(token, opportunityId, "saved");
+      setStops((current) =>
+        current.map((stop) =>
+          stop.opportunity_id === opportunityId ? { ...stop, is_completed: false } : stop,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not undo finish.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   if (loading || !ready) {
@@ -168,10 +297,27 @@ export default function RoadmapPage() {
         {stops.length > 0 ? (
           <div className="mt-10 border-t border-line pt-8">
             <p className="mb-6 text-sm text-ink-soft">
-              Dated stops stay in deadline order. Stops without a deadline sit at the end — reorder
-              those anytime.
+              Dated stops stay in deadline order. Use Change to swap a stop for another For-you
+              match, or Mark finish when you complete it.
             </p>
-            <RoadPath stops={stops} onMoveUndated={moveUndated} />
+            <RoadPath
+              stops={stops}
+              onMoveUndated={moveUndated}
+              onChangeStop={onChangeStop}
+              onPickAlternative={onPickAlternative}
+              onCloseAlternatives={() => {
+                setAlternativesForId(null);
+                setAlternatives([]);
+                setAlternativesError(null);
+              }}
+              onMarkFinish={onMarkFinish}
+              onUndoFinish={onUndoFinish}
+              alternativesForId={alternativesForId}
+              alternatives={alternatives}
+              alternativesLoading={alternativesLoading}
+              alternativesError={alternativesError}
+              busyId={busyId}
+            />
           </div>
         ) : null}
       </div>

@@ -168,6 +168,7 @@ export type RoadmapStop = {
   has_deadline: boolean;
   primary_field: FieldOption;
   is_strong_match: boolean;
+  is_completed?: boolean;
 };
 
 export type RoadmapResponse = {
@@ -177,6 +178,10 @@ export type RoadmapResponse = {
   field_plans: RoadmapFieldPlan[];
   stops: RoadmapStop[];
   summary: string;
+};
+
+export type RoadmapAlternativesResponse = {
+  items: MatchItem[];
 };
 
 export type BookmarkStatus = "saved" | "completed";

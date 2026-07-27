@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User
 from app.schemas.profile import FieldOption
+from app.services import bookmark_service
 from app.services.matching_service import ScoredMatch, get_matches
 from app.services.profile_service import get_profile, yearly_target_for_grade
 
@@ -35,8 +36,7 @@ def _deadline_key(match: ScoredMatch) -> tuple[int, float, int]:
     return (0, deadline.timestamp(), match.opportunity.id)
 
 
-def build_roadmap_selection(db: Session, user: User) -> dict:
-    """Return structured roadmap data for the API layer to serialize."""
+def _match_pool(db: Session, user: User) -> tuple[list[ScoredMatch], int, object]:
     profile = get_profile(db, user)
     interest_count = len(profile.fields)
     if interest_count == 0:
@@ -45,10 +45,6 @@ def build_roadmap_selection(db: Session, user: User) -> dict:
             detail="Profile has no interests. Add interest_slugs before requesting a roadmap.",
         )
 
-    target_per_field = yearly_target_for_grade(profile.grade_level)
-    total_target = target_per_field * interest_count
-
-    # Pull a large For-you pool including undated deadlines; drop past deadlines.
     matches, _total = get_matches(
         db,
         user,
@@ -65,6 +61,14 @@ def build_roadmap_selection(db: Session, user: User) -> dict:
             _deadline_key(m),
         )
     )
+    return pool, interest_count, profile
+
+
+def build_roadmap_selection(db: Session, user: User) -> dict:
+    """Return structured roadmap data for the API layer to serialize."""
+    pool, interest_count, profile = _match_pool(db, user)
+    target_per_field = yearly_target_for_grade(profile.grade_level)
+    total_target = target_per_field * interest_count
 
     used_ids: set[int] = set()
     selected: list[tuple[ScoredMatch, FieldOption]] = []
@@ -93,6 +97,10 @@ def build_roadmap_selection(db: Session, user: User) -> dict:
 
     selected.sort(key=lambda item: _deadline_key(item[0]))
 
+    completed_ids = {
+        row.opportunity_id for row in bookmark_service.list_completed_for_user(db, user)
+    }
+
     stops: list[dict] = []
     for index, (match, primary_field) in enumerate(selected, start=1):
         stops.append(
@@ -103,6 +111,7 @@ def build_roadmap_selection(db: Session, user: User) -> dict:
                 "has_deadline": match.opportunity.deadline_at is not None,
                 "primary_field": primary_field,
                 "is_strong_match": _is_strong(match, interest_count),
+                "is_completed": match.opportunity.id in completed_ids,
             }
         )
 
@@ -123,3 +132,25 @@ def build_roadmap_selection(db: Session, user: User) -> dict:
         "stops": stops,
         "summary": summary,
     }
+
+
+def list_roadmap_alternatives(
+    db: Session,
+    user: User,
+    *,
+    exclude_ids: set[int],
+    field_slug: str | None = None,
+    limit: int = 12,
+) -> list[ScoredMatch]:
+    """For-you matches not already on the roadmap, optionally filtered by interest."""
+    pool, _interest_count, _profile = _match_pool(db, user)
+    alternatives: list[ScoredMatch] = []
+    for match in pool:
+        if match.opportunity.id in exclude_ids:
+            continue
+        if field_slug and field_slug not in {f.slug for f in match.opportunity.fields}:
+            continue
+        alternatives.append(match)
+        if len(alternatives) >= limit:
+            break
+    return alternatives

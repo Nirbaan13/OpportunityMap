@@ -17,6 +17,11 @@ class RoadmapStop(BaseModel):
     has_deadline: bool
     primary_field: FieldOption
     is_strong_match: bool
+    is_completed: bool = False
+
+
+class RoadmapAlternativesResponse(BaseModel):
+    items: list[MatchItem] = Field(default_factory=list)
 
 
 class RoadmapResponse(BaseModel):
