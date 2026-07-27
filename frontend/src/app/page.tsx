@@ -49,13 +49,25 @@ export default function Home() {
             Browse opportunities
           </Link>
           <Link
-            href="/pricing"
+            href="/roadmap"
             className="inline-flex min-h-12 items-center justify-center rounded-md border border-ink/20 bg-transparent px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:min-h-0"
           >
             View roadmap
           </Link>
         </div>
       </section>
+
+      <footer className="relative z-10 border-t border-line/70 px-4 py-8 sm:px-10">
+        <div className="mx-auto flex max-w-5xl flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink-soft">Questions or feedback?</p>
+          <a
+            href="mailto:founder@opportunitymap.info"
+            className="text-sm font-medium text-ink transition hover:text-accent"
+          >
+            founder@opportunitymap.info
+          </a>
+        </div>
+      </footer>
     </main>
   );
 }

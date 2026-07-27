@@ -103,12 +103,26 @@ body {
   animation: pulse-dot 2.8s ease-in-out infinite;
 }
 
+@keyframes road-dash {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+
+.animate-road-dash {
+  animation: road-dash 2.4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-rise-delay,
   .animate-rise-delay-2,
   .animate-drift,
-  .animate-pulse-dot {
+  .animate-pulse-dot,
+  .animate-road-dash {
     animation: none;
   }
 }

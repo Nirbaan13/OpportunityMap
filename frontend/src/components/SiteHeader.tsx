@@ -90,6 +90,14 @@ export function SiteHeader() {
               {isPremium ? (
                 <>
                   <Link
+                    href="/roadmap"
+                    className={`inline-flex min-h-10 items-center transition hover:text-accent ${
+                      pathname.startsWith("/roadmap") ? "text-accent" : "text-ink-soft"
+                    }`}
+                  >
+                    Roadmap
+                  </Link>
+                  <Link
                     href="/bookmarks"
                     className={`inline-flex min-h-10 items-center transition hover:text-accent ${
                       pathname.startsWith("/bookmarks") ? "text-accent" : "text-ink-soft"
@@ -113,9 +121,9 @@ export function SiteHeader() {
                 </>
               ) : (
                 <Link
-                  href="/pricing"
+                  href="/roadmap"
                   className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                    pathname.startsWith("/pricing") ? "text-accent" : "text-ink-soft"
+                    pathname.startsWith("/roadmap") ? "text-accent" : "text-ink-soft"
                   }`}
                 >
                   View roadmap
@@ -200,7 +208,7 @@ export function SiteHeader() {
                 Opportunities
               </Link>
               <Link
-                href="/pricing"
+                href="/roadmap"
                 onClick={() => setMobileOpen(false)}
                 className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
               >

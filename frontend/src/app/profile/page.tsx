@@ -141,8 +141,7 @@ export default function ProfilePage() {
         <section className="mt-10 border-t border-line pt-8">
           <h2 className="font-display text-xl font-semibold text-ink">Your field progress</h2>
           <p className="mt-1 text-sm text-ink-soft">
-            Paced from when you joined, with a higher bar in higher grades. One done early
-            is fine; the same count late in your membership year means you&apos;re behind.
+            Paced from when you joined, with a higher bar in higher grades.
           </p>
           <p className="mt-3 text-ink-soft leading-relaxed">{profile.insight_summary}</p>
 
@@ -282,13 +281,21 @@ export default function ProfilePage() {
         ) : null}
 
         <div className="mt-12 border-t border-line pt-8">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:w-auto"
-          >
-            Edit profile
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link
+              href="/roadmap"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:w-auto"
+            >
+              View roadmap
+            </Link>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:w-auto"
+            >
+              Edit profile
+            </button>
+          </div>
           <p className="mt-6 text-sm text-ink-soft">
             Open{" "}
             <Link href="/opportunities" className="text-accent hover:underline">

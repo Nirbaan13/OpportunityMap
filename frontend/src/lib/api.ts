@@ -18,6 +18,7 @@ import {
   PaymentStatus,
   Profile,
   ProfileWriteRequest,
+  RoadmapResponse,
   TokenResponse,
   User,
 } from "@/types/api";
@@ -198,6 +199,10 @@ export const api = {
       })}`,
       { token },
     );
+  },
+
+  getRoadmap(token: string) {
+    return request<RoadmapResponse>("/roadmap", { token });
   },
 
   listBookmarks(token: string, params: BookmarkListParams = {}) {

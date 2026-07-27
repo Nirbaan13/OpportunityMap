@@ -151,6 +151,30 @@ export type MatchListParams = {
   page_size?: number;
 };
 
+export type RoadmapFieldPlan = {
+  field: FieldOption;
+  yearly_target: number;
+  selected_count: number;
+};
+
+export type RoadmapStop = {
+  order: number;
+  opportunity_id: number;
+  match: MatchItem;
+  has_deadline: boolean;
+  primary_field: FieldOption;
+  is_strong_match: boolean;
+};
+
+export type RoadmapResponse = {
+  grade_level: number;
+  target_per_field: number;
+  total_target: number;
+  field_plans: RoadmapFieldPlan[];
+  stops: RoadmapStop[];
+  summary: string;
+};
+
 export type BookmarkStatus = "saved" | "completed";
 
 export type BookmarkItem = {

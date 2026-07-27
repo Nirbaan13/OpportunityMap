@@ -222,7 +222,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
                   See the premium roadmap for saved opportunities, reminders, and matches.
                 </p>
                 <Link
-                  href="/pricing"
+                  href="/roadmap"
                   role="menuitem"
                   className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11 sm:w-auto"
                   onClick={() => setOpen(false)}
@@ -242,6 +242,9 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
                     <MenuLink href="/profile" active={pathname === "/profile"}>
                       Profile
                     </MenuLink>
+                    <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
+                      Roadmap
+                    </MenuLink>
                     <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
                       Saved
                       {stats.saved > 0 ? (
@@ -260,7 +263,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
                     </MenuLink>
                   </>
                 ) : (
-                  <MenuLink href="/pricing" active={pathname.startsWith("/pricing")}>
+                  <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
                     View roadmap
                   </MenuLink>
                 )}

@@ -19,13 +19,13 @@ export function MobileBottomNav() {
   const tabs = user.is_premium
     ? [
         { href: "/opportunities", label: "Browse", match: "/opportunities" },
+        { href: "/roadmap", label: "Roadmap", match: "/roadmap" },
         { href: "/bookmarks", label: "Saved", match: "/bookmarks" },
-        { href: "/notifications", label: "Alerts", match: "/notifications" },
         { href: "/profile", label: "Profile", match: "/profile" },
       ]
     : [
         { href: "/opportunities", label: "Browse", match: "/opportunities" },
-        { href: "/pricing", label: "Roadmap", match: "/pricing" },
+        { href: "/roadmap", label: "Roadmap", match: "/roadmap" },
         { href: "/profile", label: "Profile", match: "/profile" },
       ];
 

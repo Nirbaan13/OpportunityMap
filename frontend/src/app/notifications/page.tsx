@@ -140,8 +140,8 @@ export default function NotificationsPage() {
             </h1>
             <p className="mt-3 max-w-2xl text-ink-soft">
               Deadline alerts appear here and are emailed to your registered address —
-              3 months and 30 days for matching interests; 10 days and 1 day when you turn
-              on Remind me.
+              3 months and 30 days before deadline for matching interests; 10 days and 1 day
+              before deadline when you turn on Remind me.
             </p>
           </div>
           {unreadCount > 0 ? (

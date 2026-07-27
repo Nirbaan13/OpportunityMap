@@ -324,7 +324,7 @@ export default function OpportunitiesPage() {
                 </>
               ) : !user.is_premium ? (
                 <>
-                  <Link href="/pricing" className="text-accent hover:underline">
+                  <Link href="/roadmap" className="text-accent hover:underline">
                     View roadmap
                   </Link>{" "}
                   for matches, profile, and alerts.
