@@ -9,11 +9,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description: SITE_TAGLINE,
     start_url: "/",
     display: "standalone",
-    background_color: "#f7fbfc",
-    theme_color: "#0f766e",
+    background_color: "#1a1a1a",
+    theme_color: "#1a1a1a",
     icons: [
-      { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
-      { src: "/apple-icon", sizes: "180x180", type: "image/png" },
+      { src: "/logo.png", sizes: "512x512", type: "image/png" },
+      { src: "/logo.png", sizes: "1024x1024", type: "image/png" },
     ],
   };
 }
