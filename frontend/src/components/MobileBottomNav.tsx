@@ -26,7 +26,7 @@ export function MobileBottomNav() {
     : [
         { href: "/opportunities", label: "Browse", match: "/opportunities" },
         { href: "/pricing", label: "Roadmap", match: "/pricing" },
-        { href: "/profile", label: "Account", match: "/profile" },
+        { href: "/profile", label: "Profile", match: "/profile" },
       ];
 
   return (

@@ -33,7 +33,7 @@ def payment_config() -> PaymentConfigResponse:
         razorpay_key_id=settings.razorpay_key_id or None,
         dev_unlock_available=settings.dev_unlock_available,
         description=(
-            f"Yearly ₹{settings.premium_price_inr} membership for profile, "
+            f"Yearly ₹{settings.premium_price_inr} membership for matches, "
             "personalized recommendations, saved opportunities, and deadline alerts."
         ),
     )

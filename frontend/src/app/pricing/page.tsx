@@ -20,19 +20,19 @@ export default function PricingPage() {
           Unlock your map
         </h1>
         <p className="mt-3 text-ink-soft">
-          Everyone can browse opportunities free from the main menu. Premium is a{" "}
-          <span className="font-medium text-ink">yearly</span> plan for your saved profile,
-          personalized recommendations, Remind me, and deadline alerts (website + email).
+          Everyone can browse opportunities and build a student profile free. Premium is a{" "}
+          <span className="font-medium text-ink">yearly</span> plan for personalized
+          recommendations, Remind me, Saved, and deadline alerts (website + email).
         </p>
 
         <ul className="mt-8 space-y-2 text-sm text-ink-soft">
           <li>
             <span className="font-medium text-ink">Free — </span>
-            Browse and open any opportunity
+            Browse opportunities and create your profile
           </li>
           <li>
             <span className="font-medium text-ink">Premium — </span>
-            Profile, For you matches, Saved, Remind me, Alerts
+            For you matches, Saved, Remind me, Alerts
           </li>
         </ul>
 

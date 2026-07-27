@@ -43,10 +43,6 @@ export default function ProfilePage() {
       router.replace("/login");
       return;
     }
-    if (!user.is_premium) {
-      setReady(true);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
@@ -73,40 +69,10 @@ export default function ProfilePage() {
     };
   }, [loading, user, token, router]);
 
-  if (loading || !ready || !token) {
+  if (loading || !ready || !token || !user) {
     return (
       <main className="atmosphere min-h-[calc(100dvh-4rem)] px-6 py-16">
         <p className="text-ink-soft">Loading…</p>
-      </main>
-    );
-  }
-
-  if (!user?.is_premium) {
-    return (
-      <main className="atmosphere min-h-[calc(100dvh-4rem)]">
-        <div className="mx-auto max-w-xl px-4 py-12 sm:px-10">
-          <p className="font-display text-sm font-semibold uppercase tracking-[0.18em] text-accent">
-            Premium
-          </p>
-          <h1 className="mt-3 font-display text-3xl font-bold text-ink">Profile is premium</h1>
-          <p className="mt-3 text-ink-soft">
-            You can browse opportunities free. Unlock premium to save your grade, interests,
-            and mark opportunities done for field progress.
-          </p>
-          <div className="mt-8">
-            <PremiumPaywall title="Unlock profile & recommendations" />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              router.push("/");
-            }}
-            className="mt-8 text-sm font-medium text-ink-soft transition hover:text-warm"
-          >
-            Log out
-          </button>
-        </div>
       </main>
     );
   }
@@ -158,6 +124,19 @@ export default function ProfilePage() {
           Grade {profile.grade_level} · {profile.location} · {profile.country_code}
         </p>
         <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
+
+        {!user.is_premium ? (
+          <section className="mt-10 border-t border-line pt-8">
+            <h2 className="font-display text-xl font-semibold text-ink">Unlock matches & alerts</h2>
+            <p className="mt-2 text-sm text-ink-soft">
+              Your profile is saved. Premium unlocks personalized matches, Saved, Remind me, and
+              deadline emails.
+            </p>
+            <div className="mt-6">
+              <PremiumPaywall title="Unlock recommendations & alerts" compact />
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-10 border-t border-line pt-8">
           <h2 className="font-display text-xl font-semibold text-ink">Your field progress</h2>
@@ -253,52 +232,54 @@ export default function ProfilePage() {
           </section>
         ) : null}
 
-        <section className="mt-10 border-t border-line pt-8">
-          <h2 className="font-display text-xl font-semibold text-ink">Membership</h2>
-          {user.premium_until ? (
-            <p className="mt-1 text-sm text-ink-soft">
-              Your Premium year is valid until{" "}
-              <span className="font-medium text-ink">
-                {new Date(user.premium_until).toLocaleDateString()}
+        {user.is_premium ? (
+          <section className="mt-10 border-t border-line pt-8">
+            <h2 className="font-display text-xl font-semibold text-ink">Membership</h2>
+            {user.premium_until ? (
+              <p className="mt-1 text-sm text-ink-soft">
+                Your Premium year is valid until{" "}
+                <span className="font-medium text-ink">
+                  {new Date(user.premium_until).toLocaleDateString()}
+                </span>
+                .
+              </p>
+            ) : null}
+
+            <label className="mt-5 flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={user.auto_renew}
+                disabled={autoRenewSaving}
+                onChange={(event) => void toggleAutoRenew(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-line text-accent focus:ring-accent"
+              />
+              <span className="text-sm text-ink-soft">
+                <span className="font-medium text-ink">Auto-renew reminders</span>
+                <br />
+                We&apos;ll remind you by email and in your alerts a few days before your year
+                ends. You are never charged automatically&nbsp;— renewing is a quick manual
+                payment that adds another 365 days.
               </span>
-              .
-            </p>
-          ) : null}
+            </label>
+            {autoRenewError ? (
+              <p className="mt-2 text-sm text-danger">{autoRenewError}</p>
+            ) : null}
 
-          <label className="mt-5 flex items-start gap-3">
-            <input
-              type="checkbox"
-              checked={user.auto_renew}
-              disabled={autoRenewSaving}
-              onChange={(event) => void toggleAutoRenew(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-line text-accent focus:ring-accent"
-            />
-            <span className="text-sm text-ink-soft">
-              <span className="font-medium text-ink">Auto-renew reminders</span>
-              <br />
-              We&apos;ll remind you by email and in your alerts a few days before your year
-              ends. You are never charged automatically&nbsp;— renewing is a quick manual
-              payment that adds another 365 days.
-            </span>
-          </label>
-          {autoRenewError ? (
-            <p className="mt-2 text-sm text-danger">{autoRenewError}</p>
-          ) : null}
-
-          <div className="mt-6">
-            {renewing ? (
-              <PremiumPaywall title="Renew membership" renew compact />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setRenewing(true)}
-                className="rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
-              >
-                Renew now / extend another year
-              </button>
-            )}
-          </div>
-        </section>
+            <div className="mt-6">
+              {renewing ? (
+                <PremiumPaywall title="Renew membership" renew compact />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRenewing(true)}
+                  className="rounded-md border border-line px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent"
+                >
+                  Renew now / extend another year
+                </button>
+              )}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-12 border-t border-line pt-8">
           <button

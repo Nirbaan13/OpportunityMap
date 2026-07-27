@@ -1,6 +1,6 @@
 # Premium paywall (pre-deployment)
 
-Browse opportunities is **free**. Profile, recommendations (“For you”), Saved, Remind me, and deadline notifications require a **yearly** premium membership.
+Browse opportunities is **free**. Recommendations (“For you”), Saved, Remind me, and deadline notifications require a **yearly** premium membership. Creating a student profile is free after signup.
 
 Default price: **₹299 / year** (India via Razorpay, one-time annual purchase).
 International buyers use a **Polar yearly subscription** (price set in Polar, not
@@ -12,11 +12,10 @@ Membership lasts **365 days** from payment (`users.premium_until`). Paying again
 
 | Free | Premium (yearly) |
 |------|------------------|
-| `/` and browse `/opportunities` | Profile create/edit |
-| Opportunity detail (read) | For you matches |
-| Register / login | Saved bookmarks |
-| | Remind me (10-day / 1-day alerts) |
-| | Notifications inbox + reminder emails |
+| `/` and browse `/opportunities` | For you matches |
+| Opportunity detail (read) | Saved bookmarks |
+| Register / login | Remind me (10-day / 1-day alerts) |
+| Profile create/edit | Notifications inbox + reminder emails |
 
 ## Payment (Razorpay)
 
@@ -65,7 +64,7 @@ never mounted in production.
 | `POST` | `/payments/webhooks/polar` | Polar signature | paid renewals + cancel/revoke |
 | `POST` | `/payments/dev-unlock` | JWT | explicit local development only |
 
-Paid routes return **403** if premium has expired: profiles, matches, bookmarks, notifications.
+Paid routes return **403** if premium has expired: matches, bookmarks, notifications.
 
 `GET /auth/me` includes `is_premium` and `premium_until`.
 

@@ -304,8 +304,8 @@ export function PremiumPaywall({
       <div className={compact ? "" : "rounded-md border border-line bg-paper/80 p-6"}>
         <p className="font-display text-lg font-semibold text-ink">{title}</p>
         <p className="mt-2 text-sm text-ink-soft">
-          Browse opportunities free. Create an account and unlock premium for profile,
-          recommendations, and deadline alerts.
+          Browse opportunities free. Create an account, build your profile, then unlock
+          premium for recommendations and deadline alerts.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
@@ -348,7 +348,7 @@ export function PremiumPaywall({
         {renew
           ? "Renew early to add another 365 days on top of your current expiry."
           : config?.description ??
-            "Yearly membership for profile, recommendations, saved opportunities, and alerts."}
+            "Yearly membership for recommendations, saved opportunities, and alerts."}
       </p>
       {config && !usePolar ? (
         <p className="mt-3 font-display text-2xl font-bold text-ink">

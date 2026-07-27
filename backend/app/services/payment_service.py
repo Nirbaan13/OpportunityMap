@@ -124,7 +124,7 @@ def create_razorpay_order(db: Session, user: User, *, currency: str = "INR") -> 
         "key_id": settings.razorpay_key_id,
         "name": "OpportunityMap Premium",
         "description": (
-            f"Yearly membership — profile, recommendations & notifications "
+            f"Yearly membership — recommendations & notifications "
             f"(₹{settings.premium_price_inr}/year; +365 days from payment)"
         ),
         "prefill_email": user.email,

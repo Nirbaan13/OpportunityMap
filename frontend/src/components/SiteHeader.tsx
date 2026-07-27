@@ -78,48 +78,50 @@ export function SiteHeader() {
             Opportunities
           </Link>
           {loading ? null : user ? (
-            isPremium ? (
-              <>
-                <Link
-                  href="/bookmarks"
-                  className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                    pathname.startsWith("/bookmarks") ? "text-accent" : "text-ink-soft"
-                  }`}
-                >
-                  Saved
-                </Link>
-                <Link
-                  href="/notifications"
-                  className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                    pathname.startsWith("/notifications") ? "text-accent" : "text-ink-soft"
-                  }`}
-                >
-                  Alerts
-                  {unread > 0 ? (
-                    <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-md bg-warm/20 px-1.5 text-xs font-semibold text-warm">
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  ) : null}
-                </Link>
-                <Link
-                  href="/profile"
-                  className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                    pathname === "/profile" ? "text-accent" : "text-ink-soft"
-                  }`}
-                >
-                  Profile
-                </Link>
-              </>
-            ) : (
+            <>
               <Link
-                href="/pricing"
+                href="/profile"
                 className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                  pathname.startsWith("/pricing") ? "text-accent" : "text-ink-soft"
+                  pathname === "/profile" ? "text-accent" : "text-ink-soft"
                 }`}
               >
-                View roadmap
+                Profile
               </Link>
-            )
+              {isPremium ? (
+                <>
+                  <Link
+                    href="/bookmarks"
+                    className={`inline-flex min-h-10 items-center transition hover:text-accent ${
+                      pathname.startsWith("/bookmarks") ? "text-accent" : "text-ink-soft"
+                    }`}
+                  >
+                    Saved
+                  </Link>
+                  <Link
+                    href="/notifications"
+                    className={`inline-flex min-h-10 items-center transition hover:text-accent ${
+                      pathname.startsWith("/notifications") ? "text-accent" : "text-ink-soft"
+                    }`}
+                  >
+                    Alerts
+                    {unread > 0 ? (
+                      <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-md bg-warm/20 px-1.5 text-xs font-semibold text-warm">
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    ) : null}
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href="/pricing"
+                  className={`inline-flex min-h-10 items-center transition hover:text-accent ${
+                    pathname.startsWith("/pricing") ? "text-accent" : "text-ink-soft"
+                  }`}
+                >
+                  View roadmap
+                </Link>
+              )}
+            </>
           ) : (
             <>
               <Link
