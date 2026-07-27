@@ -184,6 +184,56 @@ export type RoadmapAlternativesResponse = {
   items: MatchItem[];
 };
 
+export type AdminTotals = {
+  users: number;
+  active_users: number;
+  premium_users: number;
+  users_with_profile: number;
+  signups_last_7_days: number;
+  signups_last_30_days: number;
+  opportunities_active: number;
+  opportunities_total: number;
+  payments_paid: number;
+  payments_created: number;
+  paid_amount_inr: number;
+  paid_amount_usd: number;
+};
+
+export type AdminCountRow = {
+  key: string;
+  count: number;
+};
+
+export type AdminUserRow = {
+  id: number;
+  email: string;
+  is_active: boolean;
+  is_premium: boolean;
+  premium_until: string | null;
+  has_profile: boolean;
+  created_at: string;
+};
+
+export type AdminPaymentRow = {
+  id: number;
+  user_id: number;
+  user_email: string;
+  provider: string;
+  status: string;
+  amount: number;
+  currency: string;
+  created_at: string;
+  paid_at: string | null;
+};
+
+export type AdminOverviewResponse = {
+  totals: AdminTotals;
+  payments_by_status: AdminCountRow[];
+  payments_by_provider: AdminCountRow[];
+  recent_users: AdminUserRow[];
+  recent_payments: AdminPaymentRow[];
+};
+
 export type BookmarkStatus = "saved" | "completed";
 
 export type BookmarkItem = {

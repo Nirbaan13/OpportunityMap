@@ -88,6 +88,7 @@ alembic upgrade head
 | `POLAR_PRODUCT_ID` | Polar yearly subscription product ID |
 | `POLAR_WEBHOOK_SECRET` | Polar webhook signing secret |
 | `RAZORPAY_WEBHOOK_SECRET` | separate secret configured for the API webhook |
+| `ADMIN_PASSWORD` | long random password for `/admin` founder dashboard |
 
 5. **Deploy**.
 6. Copy the API URL, e.g. `https://opportunitymap-api.vercel.app`
@@ -128,6 +129,17 @@ Back to **opportunitymap-api** project → Settings → Environment Variables:
 | `FRONTEND_URL` | same |
 
 Redeploy the **API** project.
+
+---
+
+## Founder admin (`/admin`)
+
+1. Set `ADMIN_PASSWORD` on the **API** Vercel project (a long random string).
+2. Redeploy the API.
+3. Open `https://YOUR-SITE/admin`, enter that password.
+4. Bookmark the page — it is not in the public navigation.
+
+This shows user counts, premium members, recent signups, and payments from your Neon database. Site visit analytics still come from Vercel Analytics / Google Analytics if you enable those separately.
 
 ---
 

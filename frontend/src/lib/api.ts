@@ -19,6 +19,7 @@ import {
   PaymentStatus,
   Profile,
   ProfileWriteRequest,
+  AdminOverviewResponse,
   RoadmapAlternativesResponse,
   RoadmapResponse,
   TokenResponse,
@@ -55,6 +56,7 @@ type RequestOptions = {
   method?: string;
   body?: unknown;
   token?: string | null;
+  adminPassword?: string | null;
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -67,6 +69,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
   if (options.token) {
     headers.Authorization = `Bearer ${options.token}`;
+  }
+  if (options.adminPassword) {
+    headers["X-Admin-Password"] = options.adminPassword;
   }
 
   const controller = new AbortController();
@@ -219,6 +224,12 @@ export const api = {
 
   getRoadmap(token: string) {
     return request<RoadmapResponse>("/roadmap", { token });
+  },
+
+  getAdminOverview(adminPassword: string) {
+    return request<AdminOverviewResponse>("/admin/overview", {
+      adminPassword,
+    });
   },
 
   getRoadmapAlternatives(

@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     smtp_from: str = ""
     smtp_use_tls: bool = True
 
+    # Founder admin (/admin). Leave empty to disable the admin API.
+    admin_password: str = ""
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _normalize_db_url(cls, value: object) -> object:
