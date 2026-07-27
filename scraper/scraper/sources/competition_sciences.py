@@ -228,8 +228,8 @@ def scrape_competition_sciences(
         "listed": 0,
         "created": 0,
         "updated": 0,
+        "kept_no_deadline": 0,
         "skipped": 0,
-        "skipped_no_deadline": 0,
         "skipped_past_deadline": 0,
     }
 
@@ -280,17 +280,11 @@ def scrape_competition_sciences(
         try:
             detail_html = client.fetch_html(listing.url)
             scraped = parse_detail_page(detail_html, listing)
+            # Keep undated competitions (they carry a deadline_summary for display);
+            # only drop rows whose parseable deadline has already passed.
             if scraped.deadline_at is None:
-                stats["skipped"] += 1
-                stats["skipped_no_deadline"] += 1
-                logger.info(
-                    "[%s/%s] Skipping %s — no parseable deadline",
-                    index,
-                    len(listings),
-                    listing.title,
-                )
-                continue
-            if not deadline_is_upcoming(scraped.deadline_at):
+                stats["kept_no_deadline"] += 1
+            elif not deadline_is_upcoming(scraped.deadline_at):
                 stats["skipped"] += 1
                 stats["skipped_past_deadline"] += 1
                 logger.info(

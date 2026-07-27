@@ -31,6 +31,10 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python -c "import app, scraper; print('imports ok')"
-          # Catalogs + live scrapers across AI, sciences, social science, writing, business, etc.
-          # Upserts update existing rows; maintenance deactivates past deadlines.
+          # `all` = global_competitions + field_coverage_catalog + pathways_to_science
+          #         + devpost + competition_sciences (Playwright/Chromium).
+          # Policy: live scrapers keep undated listings (with a deadline_summary) and
+          # only drop rows whose parseable deadline has already passed.
+          # Upserts update existing rows; maintenance deactivates past-deadline,
+          # unusable-title, and stale (unseen 30+ days) listings.
           python -m scraper.main --source all --max-items 150 --max-pages 8 --delay 1.0

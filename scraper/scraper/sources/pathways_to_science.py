@@ -225,8 +225,8 @@ def scrape_pathways_to_science(
         "listed": 0,
         "created": 0,
         "updated": 0,
+        "kept_no_deadline": 0,
         "skipped": 0,
-        "skipped_no_deadline": 0,
         "skipped_past_deadline": 0,
         "skipped_not_high_school": 0,
     }
@@ -264,17 +264,11 @@ def scrape_pathways_to_science(
                     scraped.experience_requirements,
                 )
                 continue
+            # Keep undated programs (they carry a deadline_summary for display);
+            # only drop rows whose parseable deadline has already passed.
             if scraped.deadline_at is None:
-                stats["skipped"] += 1
-                stats["skipped_no_deadline"] += 1
-                logger.info(
-                    "[%s/%s] Skipping %s — no parseable deadline",
-                    index,
-                    len(listings),
-                    listing.title,
-                )
-                continue
-            if not deadline_is_upcoming(scraped.deadline_at):
+                stats["kept_no_deadline"] += 1
+            elif not deadline_is_upcoming(scraped.deadline_at):
                 stats["skipped"] += 1
                 stats["skipped_past_deadline"] += 1
                 logger.info(

@@ -10,7 +10,11 @@ import scraper.db  # noqa: F401 — adds backend/ to sys.path for SQLAlchemy mod
 from scraper.curl_client import CurlClient
 from scraper.db import SessionLocal
 from scraper.http_client import BrowserClient
-from scraper.maintenance import deactivate_past_deadlines, deactivate_unusable_titles
+from scraper.maintenance import (
+    deactivate_past_deadlines,
+    deactivate_stale_listings,
+    deactivate_unusable_titles,
+)
 from scraper.sources.competition_sciences import scrape_competition_sciences
 from scraper.sources.devpost import scrape_devpost
 from scraper.sources.field_coverage_catalog import seed_field_coverage_catalog
@@ -119,6 +123,7 @@ def main() -> None:
                 "field_coverage_catalog",
                 "pathways_to_science",
                 "devpost",
+                "competition_sciences",
             ]
             if args.source == "all"
             else [args.source]
@@ -140,8 +145,10 @@ def main() -> None:
         if not args.skip_maintenance:
             deactivated = deactivate_past_deadlines(db)
             junk = deactivate_unusable_titles(db)
+            stale = deactivate_stale_listings(db)
             print(f"\nMaintenance: deactivated {deactivated} past-deadline opportunit(ies)")
             print(f"Maintenance: deactivated {junk} unusable-title opportunit(ies)")
+            print(f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)")
     finally:
         db.close()
 
