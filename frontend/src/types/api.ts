@@ -14,6 +14,10 @@ export type TokenResponse = {
   token_type: string;
 };
 
+export type MessageResponse = {
+  message: string;
+};
+
 export type FieldOption = {
   id: number;
   name: string;

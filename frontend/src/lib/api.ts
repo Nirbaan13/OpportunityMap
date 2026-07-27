@@ -8,6 +8,7 @@ import {
   FieldOption,
   MatchListParams,
   MatchListResponse,
+  MessageResponse,
   NotificationItem,
   NotificationListParams,
   NotificationListResponse,
@@ -137,6 +138,20 @@ export const api = {
       method: "PATCH",
       token,
       body: { auto_renew: autoRenew },
+    });
+  },
+
+  forgotPassword(email: string) {
+    return request<MessageResponse>("/auth/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
+  },
+
+  resetPassword(token: string, newPassword: string) {
+    return request<MessageResponse>("/auth/reset-password", {
+      method: "POST",
+      body: { token, new_password: newPassword },
     });
   },
 

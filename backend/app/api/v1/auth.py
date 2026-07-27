@@ -5,13 +5,21 @@ from app.core.deps import get_current_user
 from app.database import get_db
 from app.models import User
 from app.schemas.auth import (
+    ForgotPasswordRequest,
     LoginRequest,
+    MessageResponse,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UpdateAutoRenewRequest,
     UserResponse,
 )
-from app.services.auth_service import authenticate_user, register_user
+from app.services.auth_service import (
+    authenticate_user,
+    register_user,
+    request_password_reset,
+    reset_password,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -44,6 +52,24 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 @router.get("/me", response_model=UserResponse)
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     return _to_user_response(current_user)
+
+
+@router.post("/forgot-password", response_model=MessageResponse)
+def forgot_password(
+    payload: ForgotPasswordRequest, db: Session = Depends(get_db)
+) -> MessageResponse:
+    request_password_reset(db, payload.email)
+    return MessageResponse(
+        message="If that email is registered, a reset link is on its way."
+    )
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password_route(
+    payload: ResetPasswordRequest, db: Session = Depends(get_db)
+) -> MessageResponse:
+    reset_password(db, payload.token, payload.new_password)
+    return MessageResponse(message="Password updated. You can now log in.")
 
 
 @router.patch("/me/auto-renew", response_model=UserResponse)

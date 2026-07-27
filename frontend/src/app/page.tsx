@@ -38,8 +38,8 @@ export default function Home() {
           Find olympiads, hackathons, and research programs you can actually apply to.
         </h1>
         <p className="animate-rise-delay-2 mt-3 max-w-xl text-sm leading-relaxed text-ink-soft sm:mt-4 sm:text-lg">
-          Browse openings free and build your student profile. Unlock a yearly premium plan
-          when you want personalized matches and deadline alerts to your email.
+          Browse opportunities for free and build your student profile. Get personalized
+          matches and deadline alerts to your email.
         </p>
         <div className="animate-rise-delay-2 mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <Link
