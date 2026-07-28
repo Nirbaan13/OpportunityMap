@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Field, Opportunity
 from app.models.enums import OpportunityType
+from scraper.parsers.dates import deadline_is_upcoming
 
 @dataclass
 class ScrapedOpportunity:
@@ -84,7 +85,12 @@ def upsert_opportunity(
     existing.opportunity_type = data.opportunity_type
     existing.source_url = data.source_url
     existing.application_url = data.application_url
-    existing.deadline_at = data.deadline_at
+    # Catalog seeds often ship deadline_at=None. Don't wipe a previously enriched
+    # (or scraped) future deadline on re-seed; clear only if the existing date is past.
+    if data.deadline_at is not None:
+        existing.deadline_at = data.deadline_at
+    elif existing.deadline_at is not None and not deadline_is_upcoming(existing.deadline_at):
+        existing.deadline_at = None
     existing.grade_eligibility = data.grade_eligibility
     existing.grade_min = data.grade_min
     existing.grade_max = data.grade_max

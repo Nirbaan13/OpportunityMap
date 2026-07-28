@@ -167,7 +167,37 @@ def pick_notification_deadline(text: str) -> tuple[datetime | None, str | None]:
         if any(token in key for token in ("close", "deadline", "due")):
             return dt, key
 
-    return None, None
+    return pick_deadline_from_prose(text)
+
+
+# Phrases that usually introduce an application/submission close date in free text.
+_PROSE_DEADLINE_PATTERNS = [
+    re.compile(
+        rf"(?P<label>application(?:s)?\s+deadline|submission\s+deadline|registration\s+(?:closes|ends|deadline)|"
+        rf"entries\s+close|apply\s+by|applications?\s+(?:due|close|must\s+be\s+(?:received|submitted))\s+(?:by|on)?|"
+        rf"due\s+by|deadline\s+(?:is|of)|submissions?\s+(?:due|close)\s+(?:by|on)?)\s*[:=\-]?\s*"
+        rf"(?P<date>{_DATE_REGEX.pattern})",
+        re.IGNORECASE,
+    ),
+]
+
+
+def pick_deadline_from_prose(text: str) -> tuple[datetime | None, str | None]:
+    """Fallback: find 'Apply by March 15, 2026'-style deadlines in free-flowing page text."""
+    flattened = re.sub(r"\s+", " ", text)
+    best: tuple[datetime | None, str | None] = (None, None)
+    for pattern in _PROSE_DEADLINE_PATTERNS:
+        for match in pattern.finditer(flattened):
+            label = _clean_date_text(match.group("label")).lower()
+            parsed = parse_date(match.group("date"), end_of_day=True)
+            if parsed is None:
+                continue
+            # Prefer earlier (sooner) upcoming deadlines when several match.
+            if best[0] is None or (deadline_is_upcoming(parsed) and parsed < best[0]):
+                best = (parsed, label)
+            elif best[0] is not None and not deadline_is_upcoming(best[0]) and deadline_is_upcoming(parsed):
+                best = (parsed, label)
+    return best
 
 
 def deadline_is_upcoming(deadline_at: datetime | None, *, now: datetime | None = None) -> bool:

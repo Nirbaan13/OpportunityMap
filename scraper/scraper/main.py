@@ -9,6 +9,7 @@ import scraper.db  # noqa: F401 — adds backend/ to sys.path for SQLAlchemy mod
 
 from scraper.curl_client import CurlClient
 from scraper.db import SessionLocal
+from scraper.enrich_deadlines import enrich_catalog_deadlines
 from scraper.http_client import BrowserClient
 from scraper.maintenance import (
     deactivate_past_deadlines,
@@ -117,6 +118,17 @@ def main() -> None:
         action="store_true",
         help="Skip deactivating past-deadline / junk-title opportunities",
     )
+    parser.add_argument(
+        "--skip-enrichment",
+        action="store_true",
+        help="Skip fetching official pages to fill missing catalog deadlines",
+    )
+    parser.add_argument(
+        "--enrich-max-items",
+        type=int,
+        default=0,
+        help="Max undated catalog rows to enrich (0 = all)",
+    )
     args = parser.parse_args()
 
     db = SessionLocal()
@@ -145,6 +157,19 @@ def main() -> None:
             )
             print("Scrape finished:")
             for key, value in stats.items():
+                print(f"  {key}: {value}")
+
+        if not args.skip_enrichment and args.source in ("all", "field_coverage_catalog", "expanded_catalog", "global_competitions"):
+            print("\n=== enrich_catalog_deadlines ===")
+            with CurlClient(delay_seconds=args.delay) as client:
+                enrich_stats = enrich_catalog_deadlines(
+                    db,
+                    client,
+                    max_items=args.enrich_max_items,
+                    delay_seconds=args.delay,
+                )
+            print("Enrichment finished:")
+            for key, value in enrich_stats.items():
                 print(f"  {key}: {value}")
 
         if not args.skip_maintenance:
