@@ -14,6 +14,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.models.enums import OpportunityType
+from scraper.parsers.eligibility import infer_eligible_countries
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
 logger = logging.getLogger(__name__)
@@ -21,51 +22,6 @@ logger = logging.getLogger(__name__)
 SOURCE_NAME = "expanded_catalog"
 
 OT = OpportunityType
-
-
-def _infer_eligible_countries(
-    *,
-    title: str,
-    description: str,
-    url: str,
-    opportunity_type: OpportunityType,
-    explicit: list[str] | None = None,
-) -> list[str] | None:
-    if explicit is not None:
-        return explicit
-
-    text = f"{title} {description} {url}".lower()
-
-    worldwide_markers = (
-        "worldwide",
-        "around the world",
-        "from around the world",
-        "international competition",
-        "international essay contest",
-        "global competitive-programming contest",
-        "global multiple-choice math competition",
-        "students worldwide",
-    )
-    if (
-        (opportunity_type == OpportunityType.OLYMPIAD and title.lower().startswith("international "))
-        or any(marker in text for marker in worldwide_markers)
-    ):
-        return []
-
-    keyword_sets: list[tuple[tuple[str, ...], list[str]]] = [
-        ((" usa ", "u.s.", "american ", "new york", "stanford", "mit ", "harvard", "princeton", "yale ", "rockefeller", "nyu ", "wharton", "nasa ", "noaa "), ["US"]),
-        ((" uk ", "british ", "cambridge", "oxford", "ukmt", "foyle", "john locke institute", "peterhouse"), ["GB"]),
-        (("canada", "canadian ", "waterloo", "cemc"), ["CA"]),
-        (("australia", "australian "), ["AU"]),
-        (("india", "indian ", "iit ", "hbcse", "atal ", "technothlon"), ["IN"]),
-        (("singapore",), ["SG"]),
-        (("south africa",), ["ZA"]),
-    ]
-    for markers, codes in keyword_sets:
-        if any(marker in text for marker in markers):
-            return codes
-
-    return None
 
 
 def _item(
@@ -95,12 +51,19 @@ def _item(
         grade_eligibility=grade_eligibility,
         grade_min=grade_min,
         grade_max=grade_max,
-        eligible_countries=_infer_eligible_countries(
-            title=title,
-            description=description,
-            url=url,
-            opportunity_type=opportunity_type,
-            explicit=eligible_countries,
+        eligible_countries=(
+            eligible_countries
+            if eligible_countries is not None
+            else infer_eligible_countries(
+                description,
+                url,
+                experience,
+                title=title,
+                opportunity_type=opportunity_type,
+                # Expanded catalog is also mostly US/Canada/UK with international
+                # markers catching global programs; unmarked leftovers default US.
+                default_countries=["US"],
+            )
         ),
         experience_requirements=experience,
         deadline_at=deadline_at,

@@ -14,7 +14,10 @@ from sqlalchemy.orm import Session
 from app.models.enums import OpportunityType
 from scraper.curl_client import CurlClient
 from scraper.parsers.dates import deadline_is_upcoming, parse_date
-from scraper.parsers.eligibility import devpost_blocks_high_schoolers
+from scraper.parsers.eligibility import (
+    devpost_blocks_high_schoolers,
+    infer_eligible_countries,
+)
 from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
@@ -227,6 +230,17 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
 
     experience_requirements = "; ".join(eligibility_items) if eligibility_items else "Beginner Friendly; Online"
 
+    eligible_countries = infer_eligible_countries(
+        *(eligibility_items or []),
+        description,
+        listing.location,
+        listing.organization_name,
+        listing.url,
+        title=title,
+        opportunity_type=OpportunityType.HACKATHON,
+        online_worldwide_if_unspecified=True,
+    )
+
     return ScrapedOpportunity(
         external_id=listing.external_id,
         title=title,
@@ -237,7 +251,7 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
         grade_eligibility="High School",
         grade_min=9,
         grade_max=12,
-        eligible_countries=None,
+        eligible_countries=eligible_countries,
         experience_requirements=experience_requirements,
         deadline_at=deadline_at,
         deadline_summary=(

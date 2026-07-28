@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { MarkDoneButton } from "@/components/MarkDoneButton";
 import { RemindMeButton } from "@/components/RemindMeButton";
+import { formatEligibleCountriesLabel } from "@/lib/countries";
 import {
   formatDeadline,
   formatGradeRange,
@@ -43,12 +44,7 @@ export function OpportunityRow({
 }: OpportunityRowProps) {
   const href = `/opportunities/${opportunity.id}`;
   const applyUrl = opportunity.application_url || opportunity.source_url;
-  const countries =
-    opportunity.eligible_countries == null
-      ? "Country not specified, check source"
-      : opportunity.eligible_countries.length > 0
-        ? opportunity.eligible_countries.join(", ")
-        : "Worldwide";
+  const countries = formatEligibleCountriesLabel(opportunity.eligible_countries);
   const gradeLabel = formatGradeRange(
     opportunity.grade_min,
     opportunity.grade_max,

@@ -86,3 +86,16 @@ export function formatCountryLabel(code: string) {
   const name = regionNames.of(normalized);
   return name ? `${name} (${normalized})` : normalized;
 }
+
+export function formatEligibleCountriesLabel(codes: string[] | null) {
+  if (codes == null) {
+    return "Country not specified, check source";
+  }
+  if (codes.length === 0) {
+    return "Worldwide";
+  }
+  return codes.map((code) => {
+    const normalized = code.trim().toUpperCase();
+    return regionNames.of(normalized) ?? normalized;
+  }).join(", ");
+}

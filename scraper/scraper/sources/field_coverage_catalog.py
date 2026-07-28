@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.models.enums import OpportunityType
+from scraper.parsers.eligibility import infer_eligible_countries
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
 logger = logging.getLogger(__name__)
@@ -19,52 +20,6 @@ logger = logging.getLogger(__name__)
 SOURCE_NAME = "field_coverage_catalog"
 
 OT = OpportunityType
-
-
-def _infer_eligible_countries(
-    *,
-    title: str,
-    description: str,
-    url: str,
-    opportunity_type: OpportunityType,
-    explicit: list[str] | None = None,
-) -> list[str] | None:
-    if explicit is not None:
-        return explicit
-
-    text = f"{title} {description} {url}".lower()
-
-    worldwide_markers = (
-        "worldwide",
-        "around the world",
-        "from around the world",
-        "global competition",
-        "global olympiad",
-        "international competition",
-        "international essay contest",
-        "international mathematical olympiad",
-        "international economics olympiad",
-        "international philosophy olympiad",
-        "international psychology olympiad",
-    )
-    if (
-        (opportunity_type == OpportunityType.OLYMPIAD and title.lower().startswith("international "))
-        or any(marker in text for marker in worldwide_markers)
-    ):
-        return []
-
-    keyword_sets: list[tuple[tuple[str, ...], list[str]]] = [
-        ((" usa ", "u.s.", "american ", "new york", "stanford", "mit ", "harvard", "princeton", "yale ", "rockefeller", "nyu ", "wharton", "nasa ", "noaa ", "usaco", "usabo", "usapho", "usnco"), ["US"]),
-        ((" uk ", "british ", "cambridge", "oxford", "ukmt", "foyle", "john locke institute", "peterhouse"), ["GB"]),
-        (("canada", "canadian ", "waterloo", "cemc"), ["CA"]),
-        (("australia", "australian "), ["AU"]),
-        (("india", "indian ", "iit ", "hbcse", "atal ", "technothlon", "inmo", "inoi"), ["IN"]),
-    ]
-    for markers, codes in keyword_sets:
-        if any(marker in text for marker in markers):
-            return codes
-
-    return None
 
 
 def _item(
@@ -94,12 +49,18 @@ def _item(
         grade_eligibility=grade_eligibility,
         grade_min=grade_min,
         grade_max=grade_max,
-        eligible_countries=_infer_eligible_countries(
-            title=title,
-            description=description,
-            url=url,
-            opportunity_type=opportunity_type,
-            explicit=eligible_countries,
+        eligible_countries=(
+            eligible_countries
+            if eligible_countries is not None
+            else infer_eligible_countries(
+                description,
+                url,
+                experience,
+                title=title,
+                opportunity_type=opportunity_type,
+                # This curated catalog is mostly US programs; unmarked leftovers default US.
+                default_countries=["US"],
+            )
         ),
         experience_requirements=experience,
         deadline_at=deadline_at,
@@ -115,6 +76,7 @@ FIELD_COVERAGE: list[ScrapedOpportunity] = [
         external_id="amc-12",
         title="AMC 12 (American Mathematics Competitions)",
         url="https://maa.org/student-programs/amc/",
+        application_url="https://maa.org/amcreg/",
         description="Leading US high-school math contest; gateway to AIME and USAMO.",
         opportunity_type=OT.COMPETITION,
         field_slugs=["mathematics"],

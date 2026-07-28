@@ -19,7 +19,7 @@ from scraper.parsers.dates import (
     parse_date,
     pick_notification_deadline,
 )
-from scraper.parsers.eligibility import is_high_school_program
+from scraper.parsers.eligibility import infer_eligible_countries, is_high_school_program
 from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
 from scraper.parsers.grades import parse_grade_eligibility
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
@@ -195,6 +195,18 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
     if listing.institution and description:
         description = f"{description}\n\nInstitution: {listing.institution}"
 
+    eligible_countries = infer_eligible_countries(
+        description,
+        listing.institution,
+        academic_level,
+        content_text,
+        listing.url,
+        title=title,
+        opportunity_type=_opportunity_type_for_external_id(listing.external_id),
+        # Pathways to Science is a US STEM directory; unmarked programs are usually US.
+        default_countries=["US"],
+    )
+
     return ScrapedOpportunity(
         external_id=listing.external_id,
         title=title,
@@ -205,7 +217,7 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
         grade_eligibility=grade_eligibility,
         grade_min=grade_min,
         grade_max=grade_max,
-        eligible_countries=None,
+        eligible_countries=eligible_countries,
         experience_requirements=academic_level,
         deadline_at=deadline_at,
         deadline_summary=deadline_summary,

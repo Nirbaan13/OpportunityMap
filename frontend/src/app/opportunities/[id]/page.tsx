@@ -9,6 +9,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { MarkDoneButton } from "@/components/MarkDoneButton";
 import { RemindMeButton } from "@/components/RemindMeButton";
 import { api } from "@/lib/api";
+import { formatEligibleCountriesLabel } from "@/lib/countries";
 import {
   formatDeadline,
   formatGradeRange,
@@ -143,11 +144,7 @@ export default function OpportunityDetailPage() {
           <div>
             <dt className="text-xs uppercase tracking-wide text-ink-soft">Countries</dt>
             <dd className="mt-1 font-medium text-ink">
-              {opportunity.eligible_countries == null
-                ? "Country not specified, check source"
-                : opportunity.eligible_countries.length > 0
-                  ? opportunity.eligible_countries.join(", ")
-                  : "Worldwide"}
+              {formatEligibleCountriesLabel(opportunity.eligible_countries)}
             </dd>
           </div>
           <div>

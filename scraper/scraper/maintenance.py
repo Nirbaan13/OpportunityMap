@@ -94,3 +94,45 @@ def deactivate_unusable_titles(db: Session) -> int:
         db.commit()
     logger.info("Deactivated %s opportunit(ies) with unusable titles", len(rows))
     return len(rows)
+
+
+def backfill_eligible_countries(db: Session) -> int:
+    """Infer countries for active rows that still have eligible_countries=null."""
+    from scraper.parsers.eligibility import infer_eligible_countries
+
+    rows = list(
+        db.scalars(
+            select(Opportunity).where(
+                Opportunity.is_active.is_(True),
+                Opportunity.eligible_countries.is_(None),
+            )
+        ).all()
+    )
+    updated = 0
+    for row in rows:
+        default: list[str] | None = None
+        online_worldwide = False
+        if row.source_name == "pathways_to_science":
+            default = ["US"]
+        elif row.source_name == "devpost":
+            online_worldwide = True
+
+        inferred = infer_eligible_countries(
+            row.description,
+            row.experience_requirements,
+            row.source_url,
+            row.application_url,
+            title=row.title,
+            opportunity_type=row.opportunity_type,
+            online_worldwide_if_unspecified=online_worldwide,
+            default_countries=default,
+        )
+        if inferred is None:
+            continue
+        row.eligible_countries = inferred
+        updated += 1
+
+    if updated:
+        db.commit()
+    logger.info("Backfilled eligible_countries on %s opportunit(ies)", updated)
+    return updated

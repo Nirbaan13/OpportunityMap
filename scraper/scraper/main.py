@@ -12,6 +12,7 @@ from scraper.db import SessionLocal
 from scraper.enrich_deadlines import enrich_catalog_deadlines
 from scraper.http_client import BrowserClient
 from scraper.maintenance import (
+    backfill_eligible_countries,
     deactivate_past_deadlines,
     deactivate_stale_listings,
     deactivate_unusable_titles,
@@ -173,10 +174,12 @@ def main() -> None:
                 print(f"  {key}: {value}")
 
         if not args.skip_maintenance:
+            filled = backfill_eligible_countries(db)
             deactivated = deactivate_past_deadlines(db)
             junk = deactivate_unusable_titles(db)
             stale = deactivate_stale_listings(db)
-            print(f"\nMaintenance: deactivated {deactivated} past-deadline opportunit(ies)")
+            print(f"\nMaintenance: backfilled countries on {filled} opportunit(ies)")
+            print(f"Maintenance: deactivated {deactivated} past-deadline opportunit(ies)")
             print(f"Maintenance: deactivated {junk} unusable-title opportunit(ies)")
             print(f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)")
     finally:

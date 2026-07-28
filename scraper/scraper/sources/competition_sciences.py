@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from scraper.http_client import BrowserClient
 from scraper.parsers.dates import deadline_is_upcoming, format_deadline_summary, pick_notification_deadline
+from scraper.parsers.eligibility import infer_eligible_countries
 from scraper.parsers.field_mapping import categories_to_field_slugs
 from scraper.parsers.grades import parse_grade_eligibility
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
@@ -178,11 +179,17 @@ def parse_detail_page(
             break
     description = description_parts[0] if description_parts else None
 
-    eligible_countries = None
-    if "united states" in content_text.lower() or scope == "national":
-        eligible_countries = ["US"]
-
     opportunity_type = ICS_TYPE_TO_OPPORTUNITY.get(ics_type, OpportunityType.COMPETITION)
+
+    eligible_countries = infer_eligible_countries(
+        categories_text,
+        eligibility,
+        content_text,
+        listing.url,
+        title=title,
+        opportunity_type=opportunity_type,
+        scope=scope,
+    )
 
     return ScrapedOpportunity(
         external_id=listing.external_id,

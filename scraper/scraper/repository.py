@@ -94,7 +94,9 @@ def upsert_opportunity(
     existing.grade_eligibility = data.grade_eligibility
     existing.grade_min = data.grade_min
     existing.grade_max = data.grade_max
-    existing.eligible_countries = data.eligible_countries
+    # Don't wipe a previously inferred country with an unspecified null.
+    if data.eligible_countries is not None:
+        existing.eligible_countries = data.eligible_countries
     existing.experience_requirements = data.experience_requirements
     existing.is_active = True
     existing.last_scraped_at = now
