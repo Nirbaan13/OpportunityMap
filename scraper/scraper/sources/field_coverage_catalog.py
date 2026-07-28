@@ -21,6 +21,52 @@ SOURCE_NAME = "field_coverage_catalog"
 OT = OpportunityType
 
 
+def _infer_eligible_countries(
+    *,
+    title: str,
+    description: str,
+    url: str,
+    opportunity_type: OpportunityType,
+    explicit: list[str] | None = None,
+) -> list[str] | None:
+    if explicit is not None:
+        return explicit
+
+    text = f"{title} {description} {url}".lower()
+
+    worldwide_markers = (
+        "worldwide",
+        "around the world",
+        "from around the world",
+        "global competition",
+        "global olympiad",
+        "international competition",
+        "international essay contest",
+        "international mathematical olympiad",
+        "international economics olympiad",
+        "international philosophy olympiad",
+        "international psychology olympiad",
+    )
+    if (
+        (opportunity_type == OpportunityType.OLYMPIAD and title.lower().startswith("international "))
+        or any(marker in text for marker in worldwide_markers)
+    ):
+        return []
+
+    keyword_sets: list[tuple[tuple[str, ...], list[str]]] = [
+        ((" usa ", "u.s.", "american ", "new york", "stanford", "mit ", "harvard", "princeton", "yale ", "rockefeller", "nyu ", "wharton", "nasa ", "noaa ", "usaco", "usabo", "usapho", "usnco"), ["US"]),
+        ((" uk ", "british ", "cambridge", "oxford", "ukmt", "foyle", "john locke institute", "peterhouse"), ["GB"]),
+        (("canada", "canadian ", "waterloo", "cemc"), ["CA"]),
+        (("australia", "australian "), ["AU"]),
+        (("india", "indian ", "iit ", "hbcse", "atal ", "technothlon", "inmo", "inoi"), ["IN"]),
+    ]
+    for markers, codes in keyword_sets:
+        if any(marker in text for marker in markers):
+            return codes
+
+    return None
+
+
 def _item(
     *,
     external_id: str,
@@ -34,6 +80,7 @@ def _item(
     grade_max: int = 12,
     grade_eligibility: str = "High School",
     experience: str | None = None,
+    eligible_countries: list[str] | None = None,
     deadline_summary: str = "Deadlines vary by year and country — check the official site",
     deadline_at: datetime | None = None,
 ) -> ScrapedOpportunity:
@@ -47,7 +94,13 @@ def _item(
         grade_eligibility=grade_eligibility,
         grade_min=grade_min,
         grade_max=grade_max,
-        eligible_countries=None,
+        eligible_countries=_infer_eligible_countries(
+            title=title,
+            description=description,
+            url=url,
+            opportunity_type=opportunity_type,
+            explicit=eligible_countries,
+        ),
         experience_requirements=experience,
         deadline_at=deadline_at,
         deadline_summary=deadline_summary,

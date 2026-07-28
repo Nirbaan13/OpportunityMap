@@ -52,10 +52,11 @@ def _apply_filters(
 
     if country_code:
         code = country_code.strip().upper()
-        # null eligible_countries means open to all countries
+        # null means country not specified; empty array means worldwide
         stmt = stmt.where(
             or_(
                 Opportunity.eligible_countries.is_(None),
+                func.cardinality(Opportunity.eligible_countries) == 0,
                 Opportunity.eligible_countries.contains([code]),
             )
         )

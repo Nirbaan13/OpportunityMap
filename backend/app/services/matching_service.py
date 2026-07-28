@@ -3,7 +3,7 @@
 Hard filters (must pass):
   - opportunity is_active
   - grade within grade_min/grade_max (null bounds = unrestricted)
-  - country in eligible_countries (null = worldwide)
+  - country in eligible_countries (null = unspecified, [] = worldwide)
   - at least one shared interest field
 
 Soft score (higher = better):
@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Opportunity, Profile, User
@@ -108,6 +108,7 @@ def _eligible_query(
         .where(
             or_(
                 Opportunity.eligible_countries.is_(None),
+                func.cardinality(Opportunity.eligible_countries) == 0,
                 Opportunity.eligible_countries.contains([country_code]),
             )
         )

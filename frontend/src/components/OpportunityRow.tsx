@@ -43,9 +43,12 @@ export function OpportunityRow({
 }: OpportunityRowProps) {
   const href = `/opportunities/${opportunity.id}`;
   const applyUrl = opportunity.application_url || opportunity.source_url;
-  const countries = opportunity.eligible_countries?.length
-    ? opportunity.eligible_countries.join(", ")
-    : "Country not specified, check source";
+  const countries =
+    opportunity.eligible_countries == null
+      ? "Country not specified, check source"
+      : opportunity.eligible_countries.length > 0
+        ? opportunity.eligible_countries.join(", ")
+        : "Worldwide";
   const gradeLabel = formatGradeRange(
     opportunity.grade_min,
     opportunity.grade_max,
