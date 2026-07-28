@@ -24,8 +24,10 @@ BASE_URL = "https://devpost.com/"
 API_URL = "https://devpost.com/api/hackathons"
 SOURCE_NAME = "devpost"
 
-REQUIRED_THEME = "beginner friendly"
+# Online events keep the feed globally accessible; we accept open + upcoming so
+# students see hackathons whose registration/submission window is still ahead.
 REQUIRED_LOCATION = "online"
+LISTING_STATUSES = ("open", "upcoming")
 
 # Devpost detail HTML often ships a noscript <h1> when fetched without a full browser.
 _UNUSABLE_TITLE_MARKERS = (
@@ -60,11 +62,10 @@ class ListingItem:
     organization_name: str | None
 
 
-def _listing_params(*, page: int) -> dict[str, str]:
+def _listing_params(*, page: int) -> dict[str, object]:
     return {
         "challenge_type[]": "online",
-        "themes[]": "Beginner Friendly",
-        "status[]": "open",
+        "status[]": list(LISTING_STATUSES),
         "page": str(page),
     }
 
@@ -97,11 +98,10 @@ def _parse_submission_period_end(text: str | None) -> str | None:
 
 
 def _matches_required_filters(item: dict) -> bool:
-    location = (item.get("displayed_location") or {}).get("location", "")
-    if location.lower() != REQUIRED_LOCATION:
+    if item.get("invite_only"):
         return False
-    theme_names = [theme.get("name", "") for theme in item.get("themes") or []]
-    return any(name.lower() == REQUIRED_THEME for name in theme_names)
+    location = (item.get("displayed_location") or {}).get("location", "")
+    return location.lower() == REQUIRED_LOCATION
 
 
 def parse_api_listing(payload: dict) -> list[ListingItem]:

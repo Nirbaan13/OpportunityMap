@@ -2,8 +2,9 @@ name: Scrape opportunities
 
 on:
   schedule:
-    # Daily at 01:00 UTC — refresh listings and deadlines
-    - cron: "0 1 * * *"
+    # Every 3 days at 01:00 UTC — refresh listings and deadlines
+    # (runs on days 1,4,7,...,31; resets at the start of each month)
+    - cron: "0 1 */3 * *"
   workflow_dispatch:
 
 jobs:
@@ -31,10 +32,12 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python -c "import app, scraper; print('imports ok')"
-          # `all` = global_competitions + field_coverage_catalog + pathways_to_science
-          #         + devpost + competition_sciences (Playwright/Chromium).
+          # `all` = global_competitions + field_coverage_catalog + expanded_catalog
+          #         + pathways_to_science + devpost + competition_sciences (Playwright).
+          # Catalogs cover every field (math, CS, AI, physics, chemistry, biology,
+          # research, engineering, economics, business, social science, writing).
           # Policy: live scrapers keep undated listings (with a deadline_summary) and
           # only drop rows whose parseable deadline has already passed.
           # Upserts update existing rows; maintenance deactivates past-deadline,
           # unusable-title, and stale (unseen 30+ days) listings.
-          python -m scraper.main --source all --max-items 150 --max-pages 8 --delay 1.0
+          python -m scraper.main --source all --max-items 200 --max-pages 12 --delay 1.0
