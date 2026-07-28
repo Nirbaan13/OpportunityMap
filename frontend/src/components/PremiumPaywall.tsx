@@ -90,8 +90,11 @@ type CheckoutStage =
   | "failed";
 
 const ORDER_STORAGE_PREFIX = "opportunitymap.pendingPayment.";
+const REGION_STORAGE_KEY = "opportunitymap.checkoutRegion";
 const sleep = (milliseconds: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+
+type CheckoutRegion = "india" | "international";
 
 function guessIsIndia(): boolean {
   try {
@@ -104,6 +107,12 @@ function guessIsIndia(): boolean {
   return language === "hi-in" || language === "en-in" || language.endsWith("-in");
 }
 
+function readStoredRegion(): CheckoutRegion | null {
+  if (typeof window === "undefined") return null;
+  const value = localStorage.getItem(REGION_STORAGE_KEY);
+  return value === "india" || value === "international" ? value : null;
+}
+
 export function PremiumPaywall({
   title = "Unlock premium",
   compact = false,
@@ -112,17 +121,46 @@ export function PremiumPaywall({
   const { user, token, refreshUser, updateUser } = useAuth();
   const [config, setConfig] = useState<PaymentConfig | null>(null);
   const [configError, setConfigError] = useState(false);
-  const [isIndia, setIsIndia] = useState(true);
-  const [forceIndiaCheckout, setForceIndiaCheckout] = useState(false);
+  const [region, setRegion] = useState<CheckoutRegion>("india");
   const [stage, setStage] = useState<CheckoutStage>("idle");
   const [error, setError] = useState<string | null>(null);
   const done = stage === "success";
   const pending = ["creating", "open", "verifying", "recovering"].includes(stage);
-  const usePolar = Boolean(config?.polar_enabled && !isIndia && !forceIndiaCheckout);
+  const usePolar = Boolean(config?.polar_enabled && region === "international");
 
   useEffect(() => {
-    setIsIndia(guessIsIndia());
+    const stored = readStoredRegion();
+    if (stored) {
+      setRegion(stored);
+      return;
+    }
+    setRegion(guessIsIndia() ? "india" : "international");
   }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const profile = await api.getProfile(token);
+        if (cancelled || readStoredRegion()) return;
+        setRegion(profile.country_code.toUpperCase() === "IN" ? "india" : "international");
+      } catch {
+        // No profile yet — keep timezone/language guess.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  function chooseRegion(next: CheckoutRegion) {
+    setRegion(next);
+    setError(null);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(REGION_STORAGE_KEY, next);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -144,6 +182,16 @@ export function PremiumPaywall({
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!config) return;
+    if (config.polar_enabled && !config.razorpay_enabled) {
+      chooseRegion("international");
+    } else if (config.razorpay_enabled && !config.polar_enabled && region === "international") {
+      chooseRegion("india");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to provider availability
+  }, [config?.polar_enabled, config?.razorpay_enabled]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -350,16 +398,48 @@ export function PremiumPaywall({
           : config?.description ??
             "Yearly membership for recommendations, saved opportunities, and alerts."}
       </p>
+
+      {config?.razorpay_enabled && config.polar_enabled ? (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => chooseRegion("india")}
+            className={`rounded-md border px-3 py-2.5 text-left text-sm transition ${
+              region === "india"
+                ? "border-accent bg-accent/10 text-ink"
+                : "border-line text-ink-soft hover:border-accent/40"
+            }`}
+          >
+            <span className="block font-semibold text-ink">India</span>
+            <span className="mt-0.5 block text-xs">Razorpay · ₹{config.price_inr}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => chooseRegion("international")}
+            className={`rounded-md border px-3 py-2.5 text-left text-sm transition ${
+              region === "international"
+                ? "border-accent bg-accent/10 text-ink"
+                : "border-line text-ink-soft hover:border-accent/40"
+            }`}
+          >
+            <span className="block font-semibold text-ink">Outside India</span>
+            <span className="mt-0.5 block text-xs">
+              Polar · ${config.price_usd.toFixed(2)}
+            </span>
+          </button>
+        </div>
+      ) : null}
+
       {config && !usePolar ? (
         <p className="mt-3 font-display text-2xl font-bold text-ink">
           ₹{config.price_inr}
           <span className="text-base font-medium text-ink-soft"> / 365 days</span>
         </p>
       ) : null}
-      {usePolar ? (
-        <p className="mt-3 text-sm text-ink-soft">
-          Outside India? Continue to secure international yearly checkout. Pricing is shown
-          on the next screen.
+      {config && usePolar ? (
+        <p className="mt-3 font-display text-2xl font-bold text-ink">
+          ${config.price_usd.toFixed(2)}
+          <span className="text-base font-medium text-ink-soft"> / year</span>
         </p>
       ) : null}
       <p className="mt-1 text-xs text-ink-soft">
@@ -386,25 +466,14 @@ export function PremiumPaywall({
             : config
               ? usePolar
                 ? renew
-                  ? "Renew outside India"
-                  : "Continue outside India"
+                  ? `Renew for $${config.price_usd.toFixed(2)}`
+                  : `Pay $${config.price_usd.toFixed(2)} / year`
                 : renew
                   ? `Renew for ₹${config.price_inr}`
                   : `Pay ₹${config.price_inr}`
               : "Loading price…"}
       </button>
-      {!isIndia && config?.polar_enabled ? (
-        <button
-          type="button"
-          onClick={() => setForceIndiaCheckout((value) => !value)}
-          className="mt-3 block text-xs font-medium text-accent hover:underline"
-        >
-          {forceIndiaCheckout
-            ? "Use international checkout instead"
-            : "In India? Pay with Razorpay instead"}
-        </button>
-      ) : null}
-      {!isIndia && !config?.polar_enabled ? (
+      {!config?.polar_enabled && region === "international" ? (
         <p className="mt-3 text-xs text-ink-soft">
           International checkout is being set up. You can still pay with Razorpay in INR if
           your card supports it.

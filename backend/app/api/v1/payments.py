@@ -26,6 +26,7 @@ def payment_config() -> PaymentConfigResponse:
     """Public pricing + whether checkout providers are available."""
     return PaymentConfigResponse(
         price_inr=settings.premium_price_inr,
+        price_usd=settings.premium_price_usd,
         amount_paise=settings.premium_amount_paise,
         currency="INR",
         razorpay_enabled=settings.razorpay_enabled,
@@ -33,8 +34,8 @@ def payment_config() -> PaymentConfigResponse:
         razorpay_key_id=settings.razorpay_key_id or None,
         dev_unlock_available=settings.dev_unlock_available,
         description=(
-            f"Yearly ₹{settings.premium_price_inr} membership for matches, "
-            "personalized recommendations, saved opportunities, and deadline alerts."
+            "Yearly membership for matches, personalized recommendations, "
+            "saved opportunities, and deadline alerts."
         ),
     )
 

@@ -288,6 +288,7 @@ export type NotificationListParams = {
 
 export type PaymentConfig = {
   price_inr: number;
+  price_usd: number;
   amount_paise: number;
   currency: string;
   razorpay_enabled: boolean;

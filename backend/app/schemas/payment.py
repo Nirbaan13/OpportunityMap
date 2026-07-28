@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class PaymentConfigResponse(BaseModel):
     price_inr: int
+    price_usd: float
     amount_paise: int
     currency: str = "INR"
     razorpay_enabled: bool
