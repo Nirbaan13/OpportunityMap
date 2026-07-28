@@ -136,3 +136,64 @@ def backfill_eligible_countries(db: Session) -> int:
         db.commit()
     logger.info("Backfilled eligible_countries on %s opportunit(ies)", updated)
     return updated
+
+
+def backfill_opportunity_fields(db: Session) -> int:
+    """Reclassify fields from title/description/type using shared mapping rules.
+
+    Safe to re-run: only writes when the computed slug set differs from the row.
+    Prefer this after deploying classification fixes so live Devpost Education→Social
+    Science misfires are corrected without waiting for a full re-scrape.
+
+    Production (from ``scraper/`` with DATABASE_URL pointing at prod)::
+
+        python -c "from scraper.db import SessionLocal; from scraper.maintenance import backfill_opportunity_fields; db=SessionLocal(); print(backfill_opportunity_fields(db)); db.close()"
+
+    Or run the normal scraper (maintenance runs automatically)::
+
+        python -m scraper.main --source all --skip-enrichment
+    """
+    from scraper.parsers.field_mapping import classify_field_slugs
+    from scraper.repository import _load_fields_by_slug
+
+    rows = list(
+        db.scalars(
+            select(Opportunity).where(Opportunity.is_active.is_(True))
+        ).all()
+    )
+    updated = 0
+    for row in rows:
+        current = [field.slug for field in row.fields]
+        opportunity_type = (
+            row.opportunity_type.value
+            if hasattr(row.opportunity_type, "value")
+            else str(row.opportunity_type or "")
+        )
+        # Devpost / hackathons: re-infer + refine (drops Education→social-science).
+        # Other rows: keep existing tags, only apply refine rules (hackathon safety net).
+        if row.source_name == "devpost" or opportunity_type == "hackathon":
+            recomputed = classify_field_slugs(
+                row.title,
+                row.description,
+                source_slugs=current,
+                opportunity_type=opportunity_type or "hackathon",
+            )
+        else:
+            from scraper.parsers.field_mapping import refine_field_slugs
+
+            recomputed = refine_field_slugs(
+                current,
+                row.title,
+                row.description,
+                opportunity_type=opportunity_type,
+            )
+
+        if sorted(recomputed) == sorted(current):
+            continue
+        row.fields = _load_fields_by_slug(db, recomputed)
+        updated += 1
+
+    if updated:
+        db.commit()
+    logger.info("Reclassified fields on %s opportunit(ies)", updated)
+    return updated

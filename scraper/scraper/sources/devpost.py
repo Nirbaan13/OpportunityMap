@@ -18,7 +18,12 @@ from scraper.parsers.eligibility import (
     devpost_blocks_high_schoolers,
     infer_eligible_countries,
 )
-from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
+from scraper.parsers.field_mapping import (
+    categories_to_field_slugs,
+    infer_field_slugs,
+    merge_field_slugs,
+    refine_field_slugs,
+)
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
 logger = logging.getLogger(__name__)
@@ -41,6 +46,8 @@ _UNUSABLE_TITLE_MARKERS = (
     "noscript",
 )
 
+# Devpost themes describe product domains, not academic majors.
+# "Education" = EdTech hackathons → CS, not Social Science.
 THEME_TO_FIELDS: dict[str, list[str]] = {
     "machine learning/ai": ["ai", "computer-science"],
     "web": ["computer-science"],
@@ -48,9 +55,12 @@ THEME_TO_FIELDS: dict[str, list[str]] = {
     "cybersecurity": ["computer-science"],
     "gaming": ["computer-science"],
     "blockchain": ["computer-science"],
-    "health": ["biology", "research"],
-    "education": ["social-science"],
-    "design": ["engineering"],
+    "health": ["biology", "research", "computer-science"],
+    "education": ["computer-science"],
+    "social good": ["computer-science"],
+    "productivity": ["computer-science"],
+    "communication": ["computer-science"],
+    "design": ["engineering", "computer-science"],
 }
 
 
@@ -73,7 +83,12 @@ def _listing_params(*, page: int) -> dict[str, object]:
     }
 
 
-def _themes_to_field_slugs(theme_names: list[str], *, title: str = "") -> list[str]:
+def _themes_to_field_slugs(
+    theme_names: list[str],
+    *,
+    title: str = "",
+    description: str | None = None,
+) -> list[str]:
     slugs: list[str] = []
     for name in theme_names:
         mapped = THEME_TO_FIELDS.get(name.lower())
@@ -85,10 +100,20 @@ def _themes_to_field_slugs(theme_names: list[str], *, title: str = "") -> list[s
         for slug in categories_to_field_slugs(name):
             if slug not in slugs:
                 slugs.append(slug)
-    slugs = merge_field_slugs(slugs, infer_field_slugs(title, " ".join(theme_names)))
-    if not slugs:
-        slugs.append("computer-science")
-    return slugs
+    theme_blob = " ".join(theme_names)
+    slugs = merge_field_slugs(
+        slugs,
+        infer_field_slugs(title, description, theme_blob),
+    )
+    # Every Devpost listing is a hackathon — refine drops Education→Social Science
+    # misfires and always keeps computer-science.
+    return refine_field_slugs(
+        slugs,
+        title,
+        description,
+        theme_blob,
+        opportunity_type="hackathon",
+    )
 
 
 def _parse_submission_period_end(text: str | None) -> str | None:
@@ -259,7 +284,11 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
             if listing.submission_period_dates
             else None
         ),
-        field_slugs=_themes_to_field_slugs(listing.themes, title=title),
+        field_slugs=_themes_to_field_slugs(
+            listing.themes,
+            title=title,
+            description=description,
+        ),
     )
 
 

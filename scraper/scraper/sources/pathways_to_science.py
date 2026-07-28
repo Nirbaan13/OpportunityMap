@@ -20,7 +20,12 @@ from scraper.parsers.dates import (
     pick_notification_deadline,
 )
 from scraper.parsers.eligibility import infer_eligible_countries, is_high_school_program
-from scraper.parsers.field_mapping import categories_to_field_slugs, infer_field_slugs, merge_field_slugs
+from scraper.parsers.field_mapping import (
+    categories_to_field_slugs,
+    infer_field_slugs,
+    merge_field_slugs,
+    refine_field_slugs,
+)
 from scraper.parsers.grades import parse_grade_eligibility
 from scraper.repository import ScrapedOpportunity, upsert_opportunity
 
@@ -175,9 +180,17 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
     field_slugs = categories_to_field_slugs(disciplines)
     if not field_slugs and disciplines:
         field_slugs = categories_to_field_slugs(disciplines.replace("\n", ","))
+    opportunity_type = _opportunity_type_for_external_id(listing.external_id)
     field_slugs = merge_field_slugs(
         field_slugs,
         infer_field_slugs(title, description, disciplines, listing.title),
+    )
+    field_slugs = refine_field_slugs(
+        field_slugs,
+        title,
+        description,
+        disciplines,
+        opportunity_type=opportunity_type.value,
     )
 
     deadline_at = parse_date(deadline_text, end_of_day=True) if deadline_text else None
@@ -202,7 +215,7 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
         content_text,
         listing.url,
         title=title,
-        opportunity_type=_opportunity_type_for_external_id(listing.external_id),
+        opportunity_type=opportunity_type,
         # Pathways to Science is a US STEM directory; unmarked programs are usually US.
         default_countries=["US"],
     )
@@ -213,7 +226,7 @@ def parse_detail_page(html: str, listing: ListingItem) -> ScrapedOpportunity:
         source_url=listing.url,
         application_url=application_url,
         description=description,
-        opportunity_type=_opportunity_type_for_external_id(listing.external_id),
+        opportunity_type=opportunity_type,
         grade_eligibility=grade_eligibility,
         grade_min=grade_min,
         grade_max=grade_max,

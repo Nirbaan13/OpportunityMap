@@ -51,11 +51,26 @@ python -m scraper.main --source competition_sciences --max-pages 2 --headed
 GitHub Actions runs **daily** (`scrape-opportunities.yml`):
 
 1. Upserts catalog + scraped listings (same `source_name` + `external_id` → update deadlines/text)
-2. Deactivates opportunities whose deadlines have passed
+2. Reclassifies fields from title/description (fixes Education→Social Science hackathon misfires)
+3. Deactivates opportunities whose deadlines have passed
 
 ```powershell
 python -m scraper.main --source all --max-items 80
 ```
+
+### Field reclassification only (production)
+
+After deploying classification fixes, point `DATABASE_URL` at the target DB and either:
+
+```powershell
+# Full scrape + maintenance (includes field backfill)
+python -m scraper.main --source all --skip-enrichment
+
+# Or fields-only via Python
+python -c "from scraper.db import SessionLocal; from scraper.maintenance import backfill_opportunity_fields; db = SessionLocal(); print(backfill_opportunity_fields(db)); db.close()"
+```
+
+Re-seeding catalogs (`expanded_catalog`, `field_coverage_catalog`, `global_competitions`) also overwrites `field_slugs` from the curated lists.
 
 
 ## Project Structure

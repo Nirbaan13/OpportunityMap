@@ -14,6 +14,7 @@ from scraper.enrich_deadlines import enrich_catalog_deadlines
 from scraper.http_client import BrowserClient
 from scraper.maintenance import (
     backfill_eligible_countries,
+    backfill_opportunity_fields,
     deactivate_past_deadlines,
     deactivate_stale_listings,
     deactivate_unusable_titles,
@@ -214,10 +215,12 @@ def main() -> None:
 
         if not args.skip_maintenance:
             filled = backfill_eligible_countries(db)
+            reclassified = backfill_opportunity_fields(db)
             deactivated = deactivate_past_deadlines(db)
             junk = deactivate_unusable_titles(db)
             stale = deactivate_stale_listings(db)
             print(f"\nMaintenance: backfilled countries on {filled} opportunit(ies)")
+            print(f"Maintenance: reclassified fields on {reclassified} opportunit(ies)")
             print(f"Maintenance: deactivated {deactivated} past-deadline opportunit(ies)")
             print(f"Maintenance: deactivated {junk} unusable-title opportunit(ies)")
             print(f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)")
