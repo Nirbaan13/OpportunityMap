@@ -116,13 +116,83 @@ body {
   animation: road-dash 2.4s linear infinite;
 }
 
+@keyframes road-cover-draw {
+  from {
+    stroke-dasharray: 0 100;
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-road-cover {
+  animation: road-cover-draw 0.85s ease-out both;
+  transition: stroke-dasharray 0.85s ease-out;
+}
+
+@keyframes road-traveler {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-road-traveler {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: road-traveler 0.7s ease-out both;
+}
+
+@keyframes road-progress-banner {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-road-progress-banner {
+  animation: road-progress-banner 0.45s ease-out both;
+}
+
+@keyframes stop-settle {
+  from {
+    opacity: 0.55;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-stop-settle {
+  animation: stop-settle 0.55s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-rise-delay,
   .animate-rise-delay-2,
   .animate-drift,
   .animate-pulse-dot,
-  .animate-road-dash {
+  .animate-road-dash,
+  .animate-road-cover,
+  .animate-road-traveler,
+  .animate-road-progress-banner,
+  .animate-stop-settle {
     animation: none;
   }
 }

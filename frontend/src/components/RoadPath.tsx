@@ -1,41 +1,56 @@
 "use client";
 
 import Link from "next/link";
+import { FormEvent } from "react";
 
 import { formatDeadline } from "@/lib/opportunity-labels";
-import type { MatchItem, RoadmapStop } from "@/types/api";
+import type { OpportunitySummary, RoadmapStop } from "@/types/api";
 
 type RoadPathProps = {
   stops: RoadmapStop[];
   onMoveUndated: (opportunityId: number, direction: "up" | "down") => void;
-  onChangeStop: (opportunityId: number) => void;
-  onPickAlternative: (opportunityId: number, match: MatchItem) => void;
-  onCloseAlternatives: () => void;
+  onChangeAuto: (opportunityId: number) => void;
+  onOpenManual: (opportunityId: number) => void;
+  onPickManual: (opportunityId: number, opportunity: OpportunitySummary) => void;
+  onCloseChangePanel: () => void;
   onMarkFinish: (opportunityId: number) => void;
   onUndoFinish: (opportunityId: number) => void;
-  alternativesForId: number | null;
-  alternatives: MatchItem[];
-  alternativesLoading: boolean;
-  alternativesError: string | null;
+  changePanelForId: number | null;
+  manualOptions: OpportunitySummary[];
+  manualLoading: boolean;
+  manualError: string | null;
+  manualQuery: string;
+  onManualQueryChange: (value: string) => void;
+  onManualSearch: (event: FormEvent) => void;
   busyId: number | null;
+  progressPulseKey: number;
 };
 
 /** Winding vertical road with destination dots — gamified year path. */
 export function RoadPath({
   stops,
   onMoveUndated,
-  onChangeStop,
-  onPickAlternative,
-  onCloseAlternatives,
+  onChangeAuto,
+  onOpenManual,
+  onPickManual,
+  onCloseChangePanel,
   onMarkFinish,
   onUndoFinish,
-  alternativesForId,
-  alternatives,
-  alternativesLoading,
-  alternativesError,
+  changePanelForId,
+  manualOptions,
+  manualLoading,
+  manualError,
+  manualQuery,
+  onManualQueryChange,
+  onManualSearch,
   busyId,
+  progressPulseKey,
 }: RoadPathProps) {
   if (stops.length === 0) return null;
+
+  const completedCount = stops.filter((s) => s.is_completed).length;
+  const coveredPercent =
+    stops.length === 0 ? 0 : Math.round((completedCount / stops.length) * 100);
 
   const rowH = 168;
   const topPad = 56;
@@ -54,6 +69,13 @@ export function RoadPath({
   const last = points[points.length - 1];
   const finish = { x: mid, y: last.y + rowH * 0.72 };
 
+  // Covered path ends at last completed stop (or start if none)
+  const coveredEndIndex = completedCount > 0 ? completedCount - 1 : -1;
+  const traveler =
+    coveredEndIndex >= 0
+      ? points[coveredEndIndex]
+      : { x: mid, y: 16 };
+
   const pathD = [
     `M ${mid} 12`,
     ...points.map((point, index) => {
@@ -66,13 +88,41 @@ export function RoadPath({
     `C ${last.x} ${last.y + rowH * 0.28}, ${finish.x} ${finish.y - 36}, ${finish.x} ${finish.y}`,
   ].join(" ");
 
-  const undatedIds = stops.filter((s) => !s.has_deadline).map((s) => s.opportunity_id);
+  // pathLength 100: cover from start through completed stops (+ small lead-in), not the finish flag until all done
+  const coverDash =
+    completedCount === 0
+      ? 0
+      : completedCount >= stops.length
+        ? 100
+        : Math.min(92, Math.max(8, (completedCount / stops.length) * 85 + 6));
+
+  const undatedIds = stops
+    .filter((s) => !s.has_deadline && !s.is_completed)
+    .map((s) => s.opportunity_id);
 
   return (
     <div className="relative mx-auto w-full max-w-3xl overflow-visible pb-4">
+      <div
+        key={progressPulseKey}
+        className="mb-4 animate-road-progress-banner rounded-md border border-accent/30 bg-accent/10 px-4 py-3"
+      >
+        <p className="font-display text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+          Road covered
+        </p>
+        <p className="mt-1 text-sm text-ink">
+          {completedCount} of {stops.length} stops finished · {coveredPercent}% of your year road
+        </p>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-fog-deep/50">
+          <div
+            className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out"
+            style={{ width: `${coveredPercent}%` }}
+          />
+        </div>
+      </div>
+
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="pointer-events-none absolute inset-x-0 top-0 h-full w-full"
+        className="pointer-events-none absolute inset-x-0 top-[5.5rem] h-[calc(100%-5.5rem)] w-full sm:top-[5.25rem]"
         aria-hidden
         preserveAspectRatio="xMidYMin meet"
       >
@@ -91,6 +141,19 @@ export function RoadPath({
           strokeLinecap="round"
           strokeDasharray="10 14"
           className="animate-road-dash"
+          opacity={0.45}
+        />
+        {/* Covered portion of the road */}
+        <path
+          key={`cover-${progressPulseKey}`}
+          d={pathD}
+          fill="none"
+          stroke="#0f766e"
+          strokeWidth="7"
+          strokeLinecap="round"
+          pathLength={100}
+          strokeDasharray={`${coverDash} 100`}
+          className="animate-road-cover"
         />
         {points.map((point, index) => (
           <g key={stops[index].opportunity_id}>
@@ -99,7 +162,7 @@ export function RoadPath({
               cy={point.y}
               r="16"
               fill="#f7fbfc"
-              stroke={stops[index].is_completed ? "#0f766e" : "#0f766e"}
+              stroke="#0f766e"
               strokeWidth="3"
             />
             <circle
@@ -117,6 +180,13 @@ export function RoadPath({
             />
           </g>
         ))}
+        {/* Traveler / progress marker */}
+        {completedCount > 0 ? (
+          <g key={`traveler-${progressPulseKey}`} className="animate-road-traveler">
+            <circle cx={traveler.x} cy={traveler.y} r="11" fill="#ea580c" opacity="0.35" />
+            <circle cx={traveler.x} cy={traveler.y} r="6" fill="#ea580c" />
+          </g>
+        ) : null}
         <circle cx={finish.x} cy={finish.y} r="14" fill="#0f766e" />
         <circle cx={finish.x} cy={finish.y} r="5" fill="#f7fbfc" />
         <path
@@ -138,16 +208,21 @@ export function RoadPath({
         {stops.map((stop, index) => {
           const side = index % 2 === 0 ? "left" : "right";
           const undatedIndex = undatedIds.indexOf(stop.opportunity_id);
-          const canMoveUp = !stop.has_deadline && undatedIndex > 0;
+          const canMoveUp = !stop.has_deadline && !stop.is_completed && undatedIndex > 0;
           const canMoveDown =
-            !stop.has_deadline && undatedIndex >= 0 && undatedIndex < undatedIds.length - 1;
-          const showingAlternatives = alternativesForId === stop.opportunity_id;
+            !stop.has_deadline &&
+            !stop.is_completed &&
+            undatedIndex >= 0 &&
+            undatedIndex < undatedIds.length - 1;
+          const showingPanel = changePanelForId === stop.opportunity_id;
           const busy = busyId === stop.opportunity_id;
 
           return (
             <li
               key={stop.opportunity_id}
-              className={`flex ${side === "left" ? "justify-start pr-[42%]" : "justify-end pl-[42%]"}`}
+              className={`flex ${side === "left" ? "justify-start pr-[42%]" : "justify-end pl-[42%]"} ${
+                stop.is_completed ? "animate-stop-settle" : ""
+              }`}
               style={{ minHeight: rowH - 24 }}
             >
               <article
@@ -193,10 +268,14 @@ export function RoadPath({
                       <button
                         type="button"
                         disabled={busy}
-                        onClick={() => onChangeStop(stop.opportunity_id)}
+                        onClick={() =>
+                          showingPanel
+                            ? onCloseChangePanel()
+                            : onOpenManual(stop.opportunity_id)
+                        }
                         className="rounded-md border border-line px-2.5 py-1 text-xs font-semibold text-ink transition hover:border-accent hover:text-accent disabled:opacity-40"
                       >
-                        {showingAlternatives ? "Hide options" : "Change"}
+                        {showingPanel ? "Hide change" : "Change"}
                       </button>
                       <button
                         type="button"
@@ -239,54 +318,82 @@ export function RoadPath({
                   ) : null}
                 </div>
 
-                {showingAlternatives ? (
-                  <div className="mt-3 border-t border-line pt-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <p className="text-xs font-medium text-ink-soft">
-                        Pick another For-you match
-                      </p>
+                {showingPanel ? (
+                  <div className="mt-3 space-y-3 border-t border-line pt-3">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={onCloseAlternatives}
-                        className="text-xs text-ink-soft hover:text-accent"
+                        disabled={busy}
+                        onClick={() => onChangeAuto(stop.opportunity_id)}
+                        className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-paper transition hover:opacity-90 disabled:opacity-40"
                       >
-                        Close
+                        Change automatically
                       </button>
-                    </div>
-                    {alternativesLoading ? (
-                      <p className="text-xs text-ink-soft">Loading options…</p>
-                    ) : null}
-                    {alternativesError ? (
-                      <p className="text-xs text-danger">{alternativesError}</p>
-                    ) : null}
-                    {!alternativesLoading && !alternativesError && alternatives.length === 0 ? (
-                      <p className="text-xs text-ink-soft">
-                        No other For-you matches available right now.
+                      <p className="w-full text-xs text-ink-soft">
+                        Auto pulls the next strong For-you match not already on your road.
                       </p>
-                    ) : null}
-                    <ul className="max-h-48 space-y-2 overflow-y-auto">
-                      {alternatives.map((alt) => (
-                        <li key={alt.opportunity.id}>
-                          <button
-                            type="button"
-                            onClick={() => onPickAlternative(stop.opportunity_id, alt)}
-                            className="w-full rounded-md border border-line bg-fog/40 px-3 py-2 text-left transition hover:border-accent"
-                          >
-                            <span className="block text-sm font-medium text-ink">
-                              {alt.opportunity.title}
-                            </span>
-                            <span className="mt-0.5 block text-xs text-ink-soft">
-                              {alt.opportunity.deadline_at
-                                ? formatDeadline(alt.opportunity.deadline_at)
-                                : "Deadline not given"}
-                              {alt.shared_fields.length > 0
-                                ? ` · ${alt.shared_fields.map((f) => f.name).join(", ")}`
-                                : ""}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-xs font-medium text-ink-soft">
+                        Or change manually — pick from all opportunities
+                      </p>
+                      <form onSubmit={onManualSearch} className="flex gap-2">
+                        <input
+                          type="search"
+                          value={manualQuery}
+                          onChange={(e) => onManualQueryChange(e.target.value)}
+                          placeholder="Search openings…"
+                          className="min-w-0 flex-1 rounded-md border border-line bg-paper px-2.5 py-1.5 text-xs text-ink outline-none focus:border-accent"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-md border border-line px-2.5 py-1.5 text-xs font-semibold text-ink hover:border-accent hover:text-accent"
+                        >
+                          Search
+                        </button>
+                      </form>
+                      {manualLoading ? (
+                        <p className="mt-2 text-xs text-ink-soft">Loading…</p>
+                      ) : null}
+                      {manualError ? (
+                        <p className="mt-2 text-xs text-danger">{manualError}</p>
+                      ) : null}
+                      {!manualLoading && !manualError && manualOptions.length === 0 ? (
+                        <p className="mt-2 text-xs text-ink-soft">
+                          No other openings found. Try another search.
+                        </p>
+                      ) : null}
+                      <ul className="mt-2 max-h-52 space-y-2 overflow-y-auto">
+                        {manualOptions.map((opp) => (
+                          <li key={opp.id}>
+                            <button
+                              type="button"
+                              onClick={() => onPickManual(stop.opportunity_id, opp)}
+                              className="w-full rounded-md border border-line bg-fog/40 px-3 py-2 text-left transition hover:border-accent"
+                            >
+                              <span className="block text-sm font-medium text-ink">{opp.title}</span>
+                              <span className="mt-0.5 block text-xs text-ink-soft">
+                                {opp.deadline_at
+                                  ? formatDeadline(opp.deadline_at)
+                                  : "Deadline not given"}
+                                {opp.fields.length > 0
+                                  ? ` · ${opp.fields.map((f) => f.name).join(", ")}`
+                                  : ""}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={onCloseChangePanel}
+                      className="text-xs text-ink-soft hover:text-accent"
+                    >
+                      Close
+                    </button>
                   </div>
                 ) : null}
               </article>

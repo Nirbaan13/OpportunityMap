@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { PremiumPaywall } from "@/components/PremiumPaywall";
@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import {
   ApiError,
   type MatchItem,
+  type OpportunitySummary,
   type RoadmapResponse,
   type RoadmapStop,
 } from "@/types/api";
@@ -32,8 +33,33 @@ function stopFromMatch(
   };
 }
 
-function reorderStops(stops: RoadmapStop[]): RoadmapStop[] {
-  const dated = stops
+function stopFromOpportunity(
+  opportunity: OpportunitySummary,
+  primaryField: RoadmapStop["primary_field"],
+  order: number,
+): RoadmapStop {
+  const shared = opportunity.fields.filter((f) => f.slug === primaryField.slug);
+  return {
+    order,
+    opportunity_id: opportunity.id,
+    match: {
+      opportunity,
+      score: 0,
+      shared_fields: shared,
+      reasons: [],
+    },
+    has_deadline: opportunity.deadline_at != null,
+    primary_field: primaryField,
+    is_strong_match: shared.length > 0,
+    is_completed: false,
+  };
+}
+
+/** Finished stops stay at the front (covered road); open stops keep deadline order. */
+function arrangeStops(stops: RoadmapStop[]): RoadmapStop[] {
+  const done = stops.filter((s) => s.is_completed);
+  const open = stops.filter((s) => !s.is_completed);
+  const dated = open
     .filter((s) => s.has_deadline)
     .sort((a, b) => {
       const aTs = a.match.opportunity.deadline_at
@@ -44,8 +70,8 @@ function reorderStops(stops: RoadmapStop[]): RoadmapStop[] {
         : 0;
       return aTs - bTs;
     });
-  const undated = stops.filter((s) => !s.has_deadline);
-  return [...dated, ...undated].map((stop, i) => ({ ...stop, order: i + 1 }));
+  const undated = open.filter((s) => !s.has_deadline);
+  return [...done, ...dated, ...undated].map((stop, i) => ({ ...stop, order: i + 1 }));
 }
 
 export default function RoadmapPage() {
@@ -55,11 +81,13 @@ export default function RoadmapPage() {
   const [stops, setStops] = useState<RoadmapStop[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [alternativesForId, setAlternativesForId] = useState<number | null>(null);
-  const [alternatives, setAlternatives] = useState<MatchItem[]>([]);
-  const [alternativesLoading, setAlternativesLoading] = useState(false);
-  const [alternativesError, setAlternativesError] = useState<string | null>(null);
+  const [changePanelForId, setChangePanelForId] = useState<number | null>(null);
+  const [manualOptions, setManualOptions] = useState<OpportunitySummary[]>([]);
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualQuery, setManualQuery] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [progressPulseKey, setProgressPulseKey] = useState(0);
 
   useEffect(() => {
     if (loading) return;
@@ -82,7 +110,7 @@ export default function RoadmapPage() {
         const data = await api.getRoadmap(token);
         if (!cancelled) {
           setRoadmap(data);
-          setStops(data.stops);
+          setStops(arrangeStops(data.stops));
         }
       } catch (err) {
         if (!cancelled) {
@@ -98,70 +126,123 @@ export default function RoadmapPage() {
     };
   }, [loading, user, token, router]);
 
+  function closeChangePanel() {
+    setChangePanelForId(null);
+    setManualOptions([]);
+    setManualError(null);
+    setManualQuery("");
+  }
+
   function moveUndated(opportunityId: number, direction: "up" | "down") {
     setStops((current) => {
-      const dated = current.filter((s) => s.has_deadline);
-      const undated = current.filter((s) => !s.has_deadline);
+      const done = current.filter((s) => s.is_completed);
+      const open = current.filter((s) => !s.is_completed);
+      const dated = open.filter((s) => s.has_deadline);
+      const undated = open.filter((s) => !s.has_deadline);
       const index = undated.findIndex((s) => s.opportunity_id === opportunityId);
       if (index < 0) return current;
       const swapWith = direction === "up" ? index - 1 : index + 1;
       if (swapWith < 0 || swapWith >= undated.length) return current;
       const next = [...undated];
       [next[index], next[swapWith]] = [next[swapWith], next[index]];
-      return [...dated, ...next].map((stop, i) => ({ ...stop, order: i + 1 }));
+      return [...done, ...dated, ...next].map((stop, i) => ({ ...stop, order: i + 1 }));
     });
   }
 
-  async function onChangeStop(opportunityId: number) {
-    if (!token) return;
-    if (alternativesForId === opportunityId) {
-      setAlternativesForId(null);
-      setAlternatives([]);
-      setAlternativesError(null);
+  async function loadManualOptions(excludeIds: number[], query = "") {
+    setManualLoading(true);
+    setManualError(null);
+    try {
+      const data = await api.listOpportunities({
+        q: query || undefined,
+        open_only: false,
+        sort: "deadline_asc",
+        page: 1,
+        page_size: 40,
+      });
+      const exclude = new Set(excludeIds);
+      setManualOptions(data.items.filter((item) => !exclude.has(item.id)));
+    } catch (err) {
+      setManualOptions([]);
+      setManualError(err instanceof ApiError ? err.message : "Could not load openings.");
+    } finally {
+      setManualLoading(false);
+    }
+  }
+
+  async function onOpenChangePanel(opportunityId: number) {
+    if (changePanelForId === opportunityId) {
+      closeChangePanel();
       return;
     }
+    setChangePanelForId(opportunityId);
+    setManualQuery("");
+    await loadManualOptions(
+      stops.map((s) => s.opportunity_id),
+      "",
+    );
+  }
 
+  async function onManualSearch(event: FormEvent) {
+    event.preventDefault();
+    if (changePanelForId == null) return;
+    await loadManualOptions(
+      stops.map((s) => s.opportunity_id),
+      manualQuery.trim(),
+    );
+  }
+
+  async function onChangeAuto(opportunityId: number) {
+    if (!token) return;
     const stop = stops.find((s) => s.opportunity_id === opportunityId);
     if (!stop) return;
 
-    setAlternativesForId(opportunityId);
-    setAlternatives([]);
-    setAlternativesError(null);
-    setAlternativesLoading(true);
+    setBusyId(opportunityId);
+    setError(null);
     try {
-      const data = await api.getRoadmapAlternatives(token, {
+      let data = await api.getRoadmapAlternatives(token, {
         excludeIds: stops.map((s) => s.opportunity_id),
         fieldSlug: stop.primary_field.slug,
       });
-      setAlternatives(data.items);
       if (data.items.length === 0) {
-        // Fall back to any For-you match not on the road
-        const broader = await api.getRoadmapAlternatives(token, {
+        data = await api.getRoadmapAlternatives(token, {
           excludeIds: stops.map((s) => s.opportunity_id),
         });
-        setAlternatives(broader.items);
       }
-    } catch (err) {
-      setAlternativesError(
-        err instanceof ApiError ? err.message : "Could not load alternatives.",
+      const pick = data.items[0];
+      if (!pick) {
+        setError("No other For-you matches available to swap in automatically.");
+        return;
+      }
+      const interestCount = roadmap?.field_plans.length ?? 0;
+      setStops((current) =>
+        arrangeStops(
+          current.map((s) =>
+            s.opportunity_id === opportunityId
+              ? stopFromMatch(pick, s.primary_field, s.order, interestCount)
+              : s,
+          ),
+        ),
       );
+      closeChangePanel();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not auto-change this stop.");
     } finally {
-      setAlternativesLoading(false);
+      setBusyId(null);
     }
   }
 
-  function onPickAlternative(opportunityId: number, match: MatchItem) {
-    const interestCount = roadmap?.field_plans.length ?? 0;
-    setStops((current) => {
-      const next = current.map((stop) => {
-        if (stop.opportunity_id !== opportunityId) return stop;
-        return stopFromMatch(match, stop.primary_field, stop.order, interestCount);
-      });
-      return reorderStops(next);
-    });
-    setAlternativesForId(null);
-    setAlternatives([]);
-    setAlternativesError(null);
+  function onPickManual(opportunityId: number, opportunity: OpportunitySummary) {
+    setStops((current) =>
+      arrangeStops(
+        current.map((s) =>
+          s.opportunity_id === opportunityId
+            ? stopFromOpportunity(opportunity, s.primary_field, s.order)
+            : s,
+        ),
+      ),
+    );
+    closeChangePanel();
   }
 
   async function onMarkFinish(opportunityId: number) {
@@ -169,11 +250,34 @@ export default function RoadmapPage() {
     setBusyId(opportunityId);
     try {
       await api.setBookmarkStatus(token, opportunityId, "completed");
-      setStops((current) =>
-        current.map((stop) =>
+      setStops((current) => {
+        const marked = current.map((stop) =>
           stop.opportunity_id === opportunityId ? { ...stop, is_completed: true } : stop,
-        ),
-      );
+        );
+        // Keep prior finished order; place newly finished right after the last done before
+        const previouslyDone = marked.filter(
+          (s) => s.is_completed && s.opportunity_id !== opportunityId,
+        );
+        const justDone = marked.find((s) => s.opportunity_id === opportunityId)!;
+        const open = marked.filter((s) => !s.is_completed);
+        const dated = open
+          .filter((s) => s.has_deadline)
+          .sort((a, b) => {
+            const aTs = a.match.opportunity.deadline_at
+              ? new Date(a.match.opportunity.deadline_at).getTime()
+              : 0;
+            const bTs = b.match.opportunity.deadline_at
+              ? new Date(b.match.opportunity.deadline_at).getTime()
+              : 0;
+            return aTs - bTs;
+          });
+        const undated = open.filter((s) => !s.has_deadline);
+        return [...previouslyDone, justDone, ...dated, ...undated].map((stop, i) => ({
+          ...stop,
+          order: i + 1,
+        }));
+      });
+      setProgressPulseKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not mark as finished.");
     } finally {
@@ -187,10 +291,13 @@ export default function RoadmapPage() {
     try {
       await api.setBookmarkStatus(token, opportunityId, "saved");
       setStops((current) =>
-        current.map((stop) =>
-          stop.opportunity_id === opportunityId ? { ...stop, is_completed: false } : stop,
+        arrangeStops(
+          current.map((stop) =>
+            stop.opportunity_id === opportunityId ? { ...stop, is_completed: false } : stop,
+          ),
         ),
       );
+      setProgressPulseKey((k) => k + 1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not undo finish.");
     } finally {
@@ -297,26 +404,27 @@ export default function RoadmapPage() {
         {stops.length > 0 ? (
           <div className="mt-10 border-t border-line pt-8">
             <p className="mb-6 text-sm text-ink-soft">
-              Dated stops stay in deadline order. Use Change to swap a stop for another For-you
-              match, or Mark finish when you complete it.
+              Finished stops move to the covered part of the road. Change automatically swaps in
+              another For-you match, or pick manually from all openings.
             </p>
             <RoadPath
               stops={stops}
               onMoveUndated={moveUndated}
-              onChangeStop={onChangeStop}
-              onPickAlternative={onPickAlternative}
-              onCloseAlternatives={() => {
-                setAlternativesForId(null);
-                setAlternatives([]);
-                setAlternativesError(null);
-              }}
+              onChangeAuto={onChangeAuto}
+              onOpenManual={onOpenChangePanel}
+              onPickManual={onPickManual}
+              onCloseChangePanel={closeChangePanel}
               onMarkFinish={onMarkFinish}
               onUndoFinish={onUndoFinish}
-              alternativesForId={alternativesForId}
-              alternatives={alternatives}
-              alternativesLoading={alternativesLoading}
-              alternativesError={alternativesError}
+              changePanelForId={changePanelForId}
+              manualOptions={manualOptions}
+              manualLoading={manualLoading}
+              manualError={manualError}
+              manualQuery={manualQuery}
+              onManualQueryChange={setManualQuery}
+              onManualSearch={onManualSearch}
               busyId={busyId}
+              progressPulseKey={progressPulseKey}
             />
           </div>
         ) : null}
