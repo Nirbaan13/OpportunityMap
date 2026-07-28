@@ -93,12 +93,25 @@ KEYWORD_FIELD_HINTS: list[tuple[str, str]] = [
     (r"\b(writing|essay|poetry|literature|journalism|scholastic)\b", "writing"),
 ]
 
-# Academic social-science signals strong enough to keep the tag on a hackathon.
+# Academic social-science signals strong enough to keep the tag on a hackathon
+# or on a tech competition that was wrongly tagged via "social good" / Education.
 # Deliberately excludes "education", "history", "philosophy", and "social good/impact"
-# which appear on many Devpost EdTech / SDG hackathons.
+# which appear on many Devpost EdTech / SDG / STEM-for-good listings.
 _STRONG_SOCIAL_SCIENCE = re.compile(
     r"\b(social science|geography|psychology|sociology|political science|"
     r"anthropology|civics|debate|model un|mun)\b",
+    flags=re.IGNORECASE,
+)
+
+# Non-hackathon rows: only strip social-science when text clearly looks like a
+# tech / build-solutions program (not debate, Model UN, psychology, etc.).
+_TECH_SOCIAL_MISLABEL = re.compile(
+    r"\b("
+    r"hackathon|coding|programming|software|computer science|machine learning|"
+    r"\bai\b|edtech|mobile app|developers?|devpost|technovation|imagine cup|"
+    r"build(?:ing)? (?:an? |the )?(?:app|apps|solution|solutions)|"
+    r"stem (?:competition|challenge)|technology challenge"
+    r")\b",
     flags=re.IGNORECASE,
 )
 
@@ -175,6 +188,19 @@ def _is_hackathon_context(opportunity_type: str | None, blob: str) -> bool:
     return bool(re.search(r"\bhackathon\b", blob, flags=re.IGNORECASE))
 
 
+def looks_like_tech_social_mislabeled(
+    slugs: list[str],
+    *texts: str | None,
+) -> bool:
+    """True when social-science is present without academic SS signals, but tech text is."""
+    if "social-science" not in slugs:
+        return False
+    blob = " ".join(t for t in texts if t)
+    if not blob or _STRONG_SOCIAL_SCIENCE.search(blob):
+        return False
+    return bool(_TECH_SOCIAL_MISLABEL.search(blob))
+
+
 def refine_field_slugs(
     slugs: list[str],
     *texts: str | None,
@@ -185,16 +211,22 @@ def refine_field_slugs(
     Hackathons (and titles containing \"hackathon\") always keep computer-science and
     only retain social-science when academic social-science signals are present —
     not Devpost \"Education\" / social-good themes.
+
+    Non-hackathons are left alone unless they look like a tech/social-good misfire
+    (social-science present, no academic SS signal, clear tech/build signals). In that
+    case social-science is dropped; computer-science is NOT forced on.
     """
     result = merge_field_slugs(slugs)
     blob = " ".join(t for t in texts if t)
-    if not _is_hackathon_context(opportunity_type, blob):
+
+    if _is_hackathon_context(opportunity_type, blob):
+        if "computer-science" not in result:
+            result.append("computer-science")
+        if "social-science" in result and not _STRONG_SOCIAL_SCIENCE.search(blob):
+            result = [slug for slug in result if slug != "social-science"]
         return result
 
-    if "computer-science" not in result:
-        result.append("computer-science")
-
-    if "social-science" in result and not _STRONG_SOCIAL_SCIENCE.search(blob):
+    if looks_like_tech_social_mislabeled(result, *texts):
         result = [slug for slug in result if slug != "social-science"]
 
     return result

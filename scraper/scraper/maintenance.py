@@ -145,6 +145,14 @@ def backfill_opportunity_fields(db: Session) -> int:
     Prefer this after deploying classification fixes so live Devpost Education→Social
     Science misfires are corrected without waiting for a full re-scrape.
 
+    Scope (conservative — does not retag the whole catalog from keywords):
+    - Devpost / hackathons: full classify + refine (always keep CS; drop weak SS).
+    - Other rows that look like tech/social-good misfires: re-classify with
+      social-science removed from the seed set, then refine (still no forced CS).
+    - Remaining rows: refine only (no-op unless title contains \"hackathon\").
+
+    Curated catalog field lists still win on the next upsert from ``--source all``.
+
     Production (from ``scraper/`` with DATABASE_URL pointing at prod)::
 
         python -c "from scraper.db import SessionLocal; from scraper.maintenance import backfill_opportunity_fields; db=SessionLocal(); print(backfill_opportunity_fields(db)); db.close()"
@@ -153,7 +161,11 @@ def backfill_opportunity_fields(db: Session) -> int:
 
         python -m scraper.main --source all --skip-enrichment
     """
-    from scraper.parsers.field_mapping import classify_field_slugs
+    from scraper.parsers.field_mapping import (
+        classify_field_slugs,
+        looks_like_tech_social_mislabeled,
+        refine_field_slugs,
+    )
     from scraper.repository import _load_fields_by_slug
 
     rows = list(
@@ -169,8 +181,6 @@ def backfill_opportunity_fields(db: Session) -> int:
             if hasattr(row.opportunity_type, "value")
             else str(row.opportunity_type or "")
         )
-        # Devpost / hackathons: re-infer + refine (drops Education→social-science).
-        # Other rows: keep existing tags, only apply refine rules (hackathon safety net).
         if row.source_name == "devpost" or opportunity_type == "hackathon":
             recomputed = classify_field_slugs(
                 row.title,
@@ -178,9 +188,19 @@ def backfill_opportunity_fields(db: Session) -> int:
                 source_slugs=current,
                 opportunity_type=opportunity_type or "hackathon",
             )
+        elif looks_like_tech_social_mislabeled(
+            current, row.title, row.description
+        ):
+            # Drop the bad tag from the seed so classify cannot preserve it via merge;
+            # other curated tags (ai, business, …) stay.
+            seed = [slug for slug in current if slug != "social-science"]
+            recomputed = classify_field_slugs(
+                row.title,
+                row.description,
+                source_slugs=seed,
+                opportunity_type=opportunity_type,
+            )
         else:
-            from scraper.parsers.field_mapping import refine_field_slugs
-
             recomputed = refine_field_slugs(
                 current,
                 row.title,

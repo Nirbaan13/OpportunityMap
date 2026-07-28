@@ -6,6 +6,7 @@ from scraper.parsers.field_mapping import (
     categories_to_field_slugs,
     classify_field_slugs,
     infer_field_slugs,
+    looks_like_tech_social_mislabeled,
     refine_field_slugs,
 )
 from scraper.sources.devpost import THEME_TO_FIELDS, _themes_to_field_slugs
@@ -77,6 +78,84 @@ def test_refine_keeps_social_science_with_strong_signal() -> None:
     )
     assert "social-science" in slugs
     assert "computer-science" in slugs
+
+
+def test_real_social_science_program_keeps_tag() -> None:
+    """Psychology / social-science research must not lose its field."""
+    slugs = refine_field_slugs(
+        ["social-science", "research"],
+        "Summer Psychology Research Institute",
+        "Residential program in psychology and sociology for rising seniors.",
+        opportunity_type="program",
+    )
+    assert "social-science" in slugs
+    assert "computer-science" not in slugs
+
+
+def test_hackathon_education_classify_becomes_cs() -> None:
+    slugs = classify_field_slugs(
+        "Campus Education Hackathon",
+        "Build EdTech apps for classrooms. Theme: Education",
+        source_slugs=["social-science"],
+        opportunity_type="hackathon",
+    )
+    assert "computer-science" in slugs
+    assert "social-science" not in slugs
+
+
+def test_non_hackathon_psychology_stays_social_science() -> None:
+    slugs = classify_field_slugs(
+        "AP Psychology Essay Contest",
+        "Write about cognitive psychology and sociology.",
+        source_slugs=["social-science", "writing"],
+        opportunity_type="competition",
+    )
+    assert "social-science" in slugs
+    assert "computer-science" not in slugs
+
+
+def test_debate_and_model_un_do_not_gain_computer_science() -> None:
+    for title, description in (
+        ("National Debate Championship", "Policy debate tournament for high school."),
+        ("Model UN Conference", "Delegate simulation of the United Nations."),
+    ):
+        slugs = classify_field_slugs(
+            title,
+            description,
+            source_slugs=["social-science"],
+            opportunity_type="competition",
+        )
+        assert "social-science" in slugs, title
+        assert "computer-science" not in slugs, title
+        assert not looks_like_tech_social_mislabeled(
+            ["social-science"], title, description
+        ), title
+
+
+def test_refine_strips_ss_from_tech_competition_not_hackathon() -> None:
+    slugs = refine_field_slugs(
+        ["ai", "computer-science", "social-science", "business"],
+        "Technovation",
+        "Global programs where young people build AI and mobile solutions to community problems.",
+        opportunity_type="competition",
+    )
+    assert "social-science" not in slugs
+    assert "computer-science" in slugs
+    assert "ai" in slugs
+    assert "business" in slugs
+
+
+def test_refine_does_not_force_cs_on_non_hackathon_tech_strip() -> None:
+    slugs = refine_field_slugs(
+        ["social-science", "ai"],
+        "AI for Good challenges",
+        "Applying machine learning to global development problems.",
+        opportunity_type="competition",
+    )
+    assert "social-science" not in slugs
+    assert "ai" in slugs
+    # refine does not add CS for non-hackathons
+    assert "computer-science" not in slugs
 
 
 def test_classify_hackathon_from_title_description() -> None:
