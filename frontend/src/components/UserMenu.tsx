@@ -261,7 +261,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
             <button
               type="button"
               aria-label="Close menu"
-              className="fixed inset-0 z-40 bg-ink/25"
+              className="fixed inset-x-0 bottom-0 top-[3.25rem] z-40 bg-ink/25"
               onClick={() => setOpen(false)}
             />
             <div

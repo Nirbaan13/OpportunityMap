@@ -174,7 +174,7 @@ export function SiteHeader() {
               aria-controls={mobileMenuId}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               onClick={() => setMobileOpen((v) => !v)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line text-ink"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-md border border-line text-ink"
             >
               {mobileOpen ? (
                 <span className="relative block h-3.5 w-3.5">
@@ -199,7 +199,7 @@ export function SiteHeader() {
               <button
                 type="button"
                 aria-label="Close menu"
-                className="fixed inset-0 z-30 bg-ink/25 md:hidden"
+                className="fixed inset-x-0 bottom-0 top-[3.25rem] z-30 bg-ink/25 md:hidden"
                 onClick={() => setMobileOpen(false)}
               />
               <div
