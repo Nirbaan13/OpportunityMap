@@ -25,9 +25,29 @@ from app.services.payment_service import recompute_premium
 
 logger = logging.getLogger(__name__)
 
+# Cloudflare Browser Integrity Check (error 1010) blocks Python's default
+# "Python-urllib/x.y" User-Agent. Use an honest app identity — do not spoof a
+# browser UA (TLS fingerprint mismatch can also trigger 1010).
+_POLAR_USER_AGENT = "OpportunityMap/1.0 (+https://opportunitymap.info; polar-checkout)"
+
 _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
+
+_CF_BROWSER_SIGNATURE_RE = re.compile(
+    r"browser['\u2019]?s?\s+signature|error code:\s*1010|cf-error-details|attention required",
+    re.IGNORECASE,
+)
+
+
+def _is_cloudflare_block(text: str, http_status: int) -> bool:
+    if _CF_BROWSER_SIGNATURE_RE.search(text):
+        return True
+    return (
+        http_status == 403
+        and "cloudflare" in text.lower()
+        and "<html" in text.lower()
+    )
 
 
 def _format_polar_error_body(raw: bytes, http_status: int) -> str:
@@ -36,14 +56,32 @@ def _format_polar_error_body(raw: bytes, http_status: int) -> str:
     if not text:
         return f"Polar rejected the checkout request (HTTP {http_status})"
 
+    if _is_cloudflare_block(text, http_status):
+        return (
+            "Polar checkout is temporarily blocked by network protection "
+            f"(HTTP {http_status}). Please try again in a moment. "
+            "If this keeps happening, contact support."
+        )
+
     try:
         body = json.loads(text)
     except json.JSONDecodeError:
+        # Avoid dumping Cloudflare/HTML challenge pages into the UI.
+        if "<html" in text.lower() or "<!doctype" in text.lower():
+            return (
+                f"Polar rejected the checkout request "
+                f"(HTTP {http_status}, non-JSON response)."
+            )
         return f"Polar rejected the checkout request: {text[:300]}"
 
     if isinstance(body, dict):
         detail = body.get("detail")
         if isinstance(detail, str) and detail.strip():
+            if _is_cloudflare_block(detail, http_status):
+                return (
+                    "Polar checkout is temporarily blocked by network protection. "
+                    "Please try again in a moment."
+                )
             return f"Polar rejected the checkout request: {detail.strip()[:400]}"
         if isinstance(detail, list):
             parts: list[str] = []
@@ -78,6 +116,7 @@ def _polar_request(
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": f"Bearer {settings.polar_access_token}",
+            "User-Agent": _POLAR_USER_AGENT,
         },
     )
     try:

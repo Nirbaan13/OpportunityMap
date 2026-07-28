@@ -10,8 +10,10 @@ from fastapi import HTTPException
 
 from app.config import settings
 from app.services.polar_service import (
+    _POLAR_USER_AGENT,
     _checkout_success_url,
     _format_polar_error_body,
+    _polar_request,
     _require_polar_product_id,
     create_checkout,
     verify_webhook_signature,
@@ -55,6 +57,58 @@ def test_format_polar_error_body_validation_list() -> None:
     msg = _format_polar_error_body(raw, 422)
     assert "valid UUID" in msg
     assert "products" in msg
+
+
+def test_format_polar_error_body_cloudflare_browser_signature() -> None:
+    raw = (
+        b"The site owner has blocked access based on your browser's "
+        b"signature (error code: 1010)."
+    )
+    msg = _format_polar_error_body(raw, 403)
+    assert "network protection" in msg
+    assert "browser's signature" not in msg.lower()
+    assert "1010" not in msg
+
+
+def test_format_polar_error_body_html_non_json() -> None:
+    raw = b"<!DOCTYPE html><html><body>Cloudflare</body></html>"
+    msg = _format_polar_error_body(raw, 403)
+    assert "network protection" in msg
+    assert "<html" not in msg.lower()
+
+
+def test_polar_request_sets_user_agent(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "polar_access_token", "tok")
+    monkeypatch.setattr(settings, "polar_api_base", "https://api.polar.sh/v1")
+
+    captured: dict = {}
+
+    class _Resp:
+        def read(self) -> bytes:
+            return b'{"ok":true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(req, timeout=30):
+        captured["headers"] = dict(req.header_items())
+        captured["url"] = req.full_url
+        return _Resp()
+
+    monkeypatch.setattr(
+        "app.services.polar_service.urllib.request.urlopen",
+        fake_urlopen,
+    )
+    assert _polar_request("GET", "/products/") == {"ok": True}
+    headers = {k.lower(): v for k, v in captured["headers"].items()}
+    assert headers["user-agent"] == _POLAR_USER_AGENT
+    assert headers["authorization"] == "Bearer tok"
+    assert headers["accept"] == "application/json"
+    assert "Python-urllib" not in headers["user-agent"]
+    assert captured["url"] == "https://api.polar.sh/v1/products/"
 
 
 def test_require_polar_product_id_rejects_non_uuid(monkeypatch) -> None:
