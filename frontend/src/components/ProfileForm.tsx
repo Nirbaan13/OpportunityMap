@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { SelectField, TextArea, TextField } from "@/components/FormFields";
 import { api } from "@/lib/api";
+import { COUNTRY_OPTIONS } from "@/lib/countries";
 import { ApiError, type ActivityOption, type FieldOption, type Profile } from "@/types/api";
 
 type ProfileFormProps = {
@@ -141,17 +142,20 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
             </option>
           ))}
         </SelectField>
-        <TextField
-          label="Country code"
+        <SelectField
+          label="Country"
           name="country_code"
           required
-          minLength={2}
-          maxLength={2}
-          placeholder="IN"
-          title="Two-letter ISO code (e.g. IN for India, not +91)"
           value={countryCode}
-          onChange={(e) => setCountryCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
-        />
+          onChange={(e) => setCountryCode(e.target.value)}
+        >
+          <option value="">Select country</option>
+          {COUNTRY_OPTIONS.map((country) => (
+            <option key={country.code} value={country.code}>
+              {country.label}
+            </option>
+          ))}
+        </SelectField>
       </section>
 
       <section>

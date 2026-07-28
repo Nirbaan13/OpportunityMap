@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { PremiumPaywall } from "@/components/PremiumPaywall";
 import { ProfileForm } from "@/components/ProfileForm";
+import { formatCountryLabel } from "@/lib/countries";
 import { api } from "@/lib/api";
 import { ApiError, type Profile } from "@/types/api";
 
@@ -121,7 +122,7 @@ export default function ProfilePage() {
           {profile.full_name}
         </h1>
         <p className="mt-3 text-ink-soft">
-          Grade {profile.grade_level} · {profile.location} · {profile.country_code}
+          Grade {profile.grade_level} · {profile.location} · {formatCountryLabel(profile.country_code)}
         </p>
         <p className="mt-1 text-sm text-ink-soft">{user.email}</p>
 
