@@ -24,8 +24,8 @@ class CurlClient:
     def __exit__(self, *args: object) -> None:
         self._session.close()
 
-    def fetch_html(self, url: str) -> str:
-        response = self._session.get(url, impersonate=self.impersonate, timeout=60)
+    def fetch_html(self, url: str, *, timeout: float = 60) -> str:
+        response = self._session.get(url, impersonate=self.impersonate, timeout=timeout)
         response.raise_for_status()
         logger.debug("Fetched %s (%s bytes, status=%s)", url, len(response.text), response.status_code)
         if self.delay_seconds > 0:
