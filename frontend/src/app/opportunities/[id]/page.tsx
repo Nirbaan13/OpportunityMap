@@ -145,7 +145,7 @@ export default function OpportunityDetailPage() {
             <dd className="mt-1 font-medium text-ink">
               {opportunity.eligible_countries?.length
                 ? opportunity.eligible_countries.join(", ")
-                : "Worldwide"}
+                : "Country not specified, check source"}
             </dd>
           </div>
           <div>
