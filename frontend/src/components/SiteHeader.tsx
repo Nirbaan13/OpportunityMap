@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useAuth } from "@/components/AuthProvider";
 import { BrandMark } from "@/components/BrandMark";
@@ -15,8 +16,13 @@ export function SiteHeader() {
   const isHome = pathname === "/";
   const [unread, setUnread] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const mobileMenuId = useId();
   const isPremium = Boolean(user?.is_premium);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -187,44 +193,47 @@ export function SiteHeader() {
         )}
       </div>
 
-      {mobileOpen && !user ? (
-        <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            className="fixed inset-0 z-30 bg-ink/25 md:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div
-            id={mobileMenuId}
-            className="fixed inset-x-0 top-[3.25rem] z-40 border-t border-line bg-paper px-4 py-4 shadow-[var(--shadow-soft)] md:hidden"
-          >
-            <nav className="flex flex-col gap-1">
-              <Link
-                href="/opportunities"
+      {mobileOpen && !user && mounted
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-30 bg-ink/25 md:hidden"
                 onClick={() => setMobileOpen(false)}
-                className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
+              />
+              <div
+                id={mobileMenuId}
+                className="fixed inset-x-0 top-[3.25rem] z-40 w-full border-t border-line bg-paper px-4 py-4 shadow-[var(--shadow-soft)] md:hidden"
               >
-                Opportunities
-              </Link>
-              <Link
-                href="/roadmap"
-                onClick={() => setMobileOpen(false)}
-                className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
-              >
-                View roadmap
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileOpen(false)}
-                className="mt-2 inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-base font-semibold text-paper"
-              >
-                Get started
-              </Link>
-            </nav>
-          </div>
-        </>
-      ) : null}
+                <nav className="flex flex-col gap-1">
+                  <Link
+                    href="/opportunities"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
+                  >
+                    Opportunities
+                  </Link>
+                  <Link
+                    href="/roadmap"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
+                  >
+                    View roadmap
+                  </Link>
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileOpen(false)}
+                    className="mt-2 inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-base font-semibold text-paper"
+                  >
+                    Get started
+                  </Link>
+                </nav>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </header>
   );
 }

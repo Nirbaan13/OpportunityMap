@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { useAuth } from "@/components/AuthProvider";
 import { api } from "@/lib/api";
@@ -48,11 +49,17 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
   const pathname = usePathname();
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [stats, setStats] = useState<ActivityStats>(emptyStats);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const isPremium = Boolean(user?.is_premium);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setOpen(false);
@@ -64,11 +71,11 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
       if (event.key === "Escape") setOpen(false);
     }
     function onPointer(event: MouseEvent | TouchEvent) {
-      const el = rootRef.current;
-      if (!el) return;
-      if (event.target instanceof Node && !el.contains(event.target)) {
-        setOpen(false);
-      }
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onPointer);
@@ -132,9 +139,143 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
   if (!user) return null;
 
   const label = initialsFrom(user.email, stats.fullName);
-  const panelClass = forceSheet
-    ? "fixed inset-x-0 bottom-0 top-[3.25rem] z-50 overflow-y-auto overscroll-contain border-t border-line bg-paper px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[var(--shadow-soft)]"
-    : "absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-lg border border-line bg-paper shadow-[var(--shadow-soft)]";
+
+  const menuBody = (
+    <>
+      <div className="border-b border-line px-1 pb-3 sm:px-4 sm:py-3">
+        <p className="font-display text-base font-semibold text-ink sm:text-sm">
+          {stats.fullName || "Your account"}
+        </p>
+        <p className="mt-0.5 truncate text-sm text-ink-soft sm:text-xs">{user.email}</p>
+        <p className="mt-2 text-xs font-medium text-accent">
+          {isPremium
+            ? user.premium_until
+              ? `Premium · until ${new Date(user.premium_until).toLocaleDateString()}`
+              : "Premium"
+            : "Free browse"}
+        </p>
+      </div>
+
+      {isPremium ? (
+        <div className="border-b border-line px-1 py-3 sm:px-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
+            Your activity
+          </p>
+          {statsLoading ? (
+            <p className="mt-2 text-sm text-ink-soft">Loading…</p>
+          ) : (
+            <ul className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <li className="rounded-md bg-fog px-2.5 py-2.5">
+                <p className="text-lg font-semibold tabular-nums text-ink">{stats.saved}</p>
+                <p className="text-xs text-ink-soft">Saved</p>
+              </li>
+              <li className="rounded-md bg-fog px-2.5 py-2.5">
+                <p className="text-lg font-semibold tabular-nums text-ink">
+                  {stats.reminders}
+                </p>
+                <p className="text-xs text-ink-soft">Reminders</p>
+              </li>
+              <li className="rounded-md bg-fog px-2.5 py-2.5">
+                <p className="text-lg font-semibold tabular-nums text-ink">{stats.unread}</p>
+                <p className="text-xs text-ink-soft">Unread alerts</p>
+              </li>
+              <li className="rounded-md bg-fog px-2.5 py-2.5">
+                <p className="text-lg font-semibold tabular-nums text-ink">
+                  {stats.completedActivities}
+                </p>
+                <p className="text-xs text-ink-soft">Past activities</p>
+              </li>
+            </ul>
+          )}
+          <p className="mt-2 text-xs text-ink-soft">
+            Profile:{" "}
+            <span className="font-medium text-ink">
+              {stats.profileReady ? "Ready for matches" : "Needs setup"}
+            </span>
+          </p>
+        </div>
+      ) : (
+        <div className="border-b border-line px-1 py-3 sm:px-4">
+          <p className="text-sm text-ink-soft">
+            See the premium roadmap for saved opportunities, reminders, and matches.
+          </p>
+          <Link
+            href="/roadmap"
+            role="menuitem"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11 sm:w-auto"
+            onClick={() => setOpen(false)}
+          >
+            View roadmap
+          </Link>
+        </div>
+      )}
+
+      {!compactNav ? (
+        <nav className="flex flex-col py-1">
+          <MenuLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
+            Opportunities
+          </MenuLink>
+          {isPremium ? (
+            <>
+              <MenuLink href="/profile" active={pathname === "/profile"}>
+                Profile
+              </MenuLink>
+              <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
+                Roadmap
+              </MenuLink>
+              <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
+                Saved
+                {stats.saved > 0 ? (
+                  <span className="ml-auto text-xs tabular-nums text-ink-soft">
+                    {stats.saved}
+                  </span>
+                ) : null}
+              </MenuLink>
+              <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
+                Alerts
+                {stats.unread > 0 ? (
+                  <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
+                    {stats.unread > 99 ? "99+" : stats.unread}
+                  </span>
+                ) : null}
+              </MenuLink>
+            </>
+          ) : (
+            <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
+              View roadmap
+            </MenuLink>
+          )}
+        </nav>
+      ) : (
+        <div className="py-2 px-1 text-sm text-ink-soft">
+          Use the tabs below to move between Browse, Saved, and Alerts.
+        </div>
+      )}
+    </>
+  );
+
+  const sheet =
+    open && forceSheet && mounted
+      ? createPortal(
+          <>
+            <button
+              type="button"
+              aria-label="Close menu"
+              className="fixed inset-0 z-40 bg-ink/25"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              ref={panelRef}
+              id={menuId}
+              role="menu"
+              className="fixed inset-x-0 bottom-0 top-[3.25rem] z-50 w-full overflow-y-auto overscroll-contain border-t border-line bg-paper px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 shadow-[var(--shadow-soft)]"
+            >
+              {menuBody}
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
 
   return (
     <div ref={rootRef} className={`relative ${className}`}>
@@ -153,128 +294,17 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
         ) : null}
       </button>
 
-      {open ? (
-        <>
-          {forceSheet ? (
-            <button
-              type="button"
-              aria-label="Close menu"
-              className="fixed inset-0 z-40 bg-ink/25"
-              onClick={() => setOpen(false)}
-            />
-          ) : null}
-          <div id={menuId} role="menu" className={panelClass}>
-            <div className="border-b border-line px-1 pb-3 sm:px-4 sm:py-3">
-              <p className="font-display text-base font-semibold text-ink sm:text-sm">
-                {stats.fullName || "Your account"}
-              </p>
-              <p className="mt-0.5 truncate text-sm text-ink-soft sm:text-xs">{user.email}</p>
-              <p className="mt-2 text-xs font-medium text-accent">
-                {isPremium
-                  ? user.premium_until
-                    ? `Premium · until ${new Date(user.premium_until).toLocaleDateString()}`
-                    : "Premium"
-                  : "Free browse"}
-              </p>
-            </div>
+      {sheet}
 
-            {isPremium ? (
-              <div className="border-b border-line px-1 py-3 sm:px-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
-                  Your activity
-                </p>
-                {statsLoading ? (
-                  <p className="mt-2 text-sm text-ink-soft">Loading…</p>
-                ) : (
-                  <ul className="mt-2 grid grid-cols-2 gap-2 text-sm">
-                    <li className="rounded-md bg-fog px-2.5 py-2.5">
-                      <p className="text-lg font-semibold tabular-nums text-ink">{stats.saved}</p>
-                      <p className="text-xs text-ink-soft">Saved</p>
-                    </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2.5">
-                      <p className="text-lg font-semibold tabular-nums text-ink">
-                        {stats.reminders}
-                      </p>
-                      <p className="text-xs text-ink-soft">Reminders</p>
-                    </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2.5">
-                      <p className="text-lg font-semibold tabular-nums text-ink">{stats.unread}</p>
-                      <p className="text-xs text-ink-soft">Unread alerts</p>
-                    </li>
-                    <li className="rounded-md bg-fog px-2.5 py-2.5">
-                      <p className="text-lg font-semibold tabular-nums text-ink">
-                        {stats.completedActivities}
-                      </p>
-                      <p className="text-xs text-ink-soft">Past activities</p>
-                    </li>
-                  </ul>
-                )}
-                <p className="mt-2 text-xs text-ink-soft">
-                  Profile:{" "}
-                  <span className="font-medium text-ink">
-                    {stats.profileReady ? "Ready for matches" : "Needs setup"}
-                  </span>
-                </p>
-              </div>
-            ) : (
-              <div className="border-b border-line px-1 py-3 sm:px-4">
-                <p className="text-sm text-ink-soft">
-                  See the premium roadmap for saved opportunities, reminders, and matches.
-                </p>
-                <Link
-                  href="/roadmap"
-                  role="menuitem"
-                  className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11 sm:w-auto"
-                  onClick={() => setOpen(false)}
-                >
-                  View roadmap
-                </Link>
-              </div>
-            )}
-
-            {!compactNav ? (
-              <nav className="flex flex-col py-1">
-                <MenuLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
-                  Opportunities
-                </MenuLink>
-                {isPremium ? (
-                  <>
-                    <MenuLink href="/profile" active={pathname === "/profile"}>
-                      Profile
-                    </MenuLink>
-                    <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
-                      Roadmap
-                    </MenuLink>
-                    <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
-                      Saved
-                      {stats.saved > 0 ? (
-                        <span className="ml-auto text-xs tabular-nums text-ink-soft">
-                          {stats.saved}
-                        </span>
-                      ) : null}
-                    </MenuLink>
-                    <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
-                      Alerts
-                      {stats.unread > 0 ? (
-                        <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
-                          {stats.unread > 99 ? "99+" : stats.unread}
-                        </span>
-                      ) : null}
-                    </MenuLink>
-                  </>
-                ) : (
-                  <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
-                    View roadmap
-                  </MenuLink>
-                )}
-              </nav>
-            ) : (
-              <div className="py-2 px-1 text-sm text-ink-soft">
-                Use the tabs below to move between Browse, Saved, and Alerts.
-              </div>
-            )}
-          </div>
-        </>
+      {open && !forceSheet ? (
+        <div
+          ref={panelRef}
+          id={menuId}
+          role="menu"
+          className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] overflow-hidden rounded-lg border border-line bg-paper shadow-[var(--shadow-soft)]"
+        >
+          {menuBody}
+        </div>
       ) : null}
     </div>
   );
