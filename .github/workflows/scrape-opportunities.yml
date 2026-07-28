@@ -39,4 +39,4 @@ jobs:
           # program's official page and fills deadline_at when a labeled upcoming
           # date is found. Upserts preserve previously enriched future deadlines.
           # Maintenance deactivates past-deadline, unusable-title, and stale rows.
-          python -m scraper.main --source all --max-items 200 --max-pages 12 --delay 1.0
+          python -m scraper.main --source all --max-items 200 --max-pages 12 --delay 1.0 --enrich-max-items 100

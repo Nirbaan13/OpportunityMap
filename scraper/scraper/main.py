@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 
 import scraper.db  # noqa: F401 — adds backend/ to sys.path for SQLAlchemy models
 
@@ -28,6 +29,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
 )
+logger = logging.getLogger(__name__)
 
 SOURCES = (
     "devpost",
@@ -133,6 +135,7 @@ def main() -> None:
     args = parser.parse_args()
 
     db = SessionLocal()
+    failures: list[str] = []
     try:
         sources = (
             [
@@ -148,30 +151,66 @@ def main() -> None:
         )
         for source in sources:
             print(f"\n=== {source} ===")
-            stats = _run_source(
-                db,
-                source,
-                max_pages=args.max_pages,
-                max_items=args.max_items,
-                delay=args.delay,
-                headed=args.headed,
-            )
-            print("Scrape finished:")
-            for key, value in stats.items():
-                print(f"  {key}: {value}")
-
-        if not args.skip_enrichment and args.source in ("all", "field_coverage_catalog", "expanded_catalog", "global_competitions"):
-            print("\n=== enrich_catalog_deadlines ===")
-            with CurlClient(delay_seconds=args.delay) as client:
-                enrich_stats = enrich_catalog_deadlines(
+            try:
+                stats = _run_source(
                     db,
-                    client,
-                    max_items=args.enrich_max_items,
-                    delay_seconds=args.delay,
+                    source,
+                    max_pages=args.max_pages,
+                    max_items=args.max_items,
+                    delay=args.delay,
+                    headed=args.headed,
                 )
-            print("Enrichment finished:")
-            for key, value in enrich_stats.items():
-                print(f"  {key}: {value}")
+                print("Scrape finished:")
+                for key, value in stats.items():
+                    print(f"  {key}: {value}")
+            except Exception:
+                # ICS is frequently blocked in CI (403/WAF); treat as soft-fail on --source all.
+                soft = args.source == "all" and source == "competition_sciences"
+                if soft:
+                    logger.exception(
+                        "Source %s failed (soft-fail); continuing so maintenance still runs",
+                        source,
+                    )
+                    print(f"Scrape FAILED for {source} (soft-fail); continuing.")
+                else:
+                    failures.append(source)
+                    logger.exception(
+                        "Source %s failed; continuing with remaining work", source
+                    )
+                    print(f"Scrape FAILED for {source} (see logs above); continuing.")
+                try:
+                    db.rollback()
+                except Exception:
+                    logger.exception("Could not rollback after %s failure", source)
+
+        if not args.skip_enrichment and args.source in (
+            "all",
+            "field_coverage_catalog",
+            "expanded_catalog",
+            "global_competitions",
+        ):
+            print("\n=== enrich_catalog_deadlines ===")
+            try:
+                with CurlClient(delay_seconds=args.delay) as client:
+                    enrich_stats = enrich_catalog_deadlines(
+                        db,
+                        client,
+                        max_items=args.enrich_max_items,
+                        delay_seconds=args.delay,
+                    )
+                print("Enrichment finished:")
+                for key, value in enrich_stats.items():
+                    print(f"  {key}: {value}")
+            except Exception:
+                # Enrichment is best-effort; never block country backfill / deactivation.
+                logger.exception(
+                    "Deadline enrichment failed (soft-fail); continuing to maintenance"
+                )
+                print("Enrichment FAILED (soft-fail); continuing to maintenance.")
+                try:
+                    db.rollback()
+                except Exception:
+                    logger.exception("Could not rollback after enrichment failure")
 
         if not args.skip_maintenance:
             filled = backfill_eligible_countries(db)
@@ -184,6 +223,10 @@ def main() -> None:
             print(f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)")
     finally:
         db.close()
+
+    if failures:
+        print(f"\nCompleted with failures: {', '.join(failures)}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

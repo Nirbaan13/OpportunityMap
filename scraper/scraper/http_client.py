@@ -29,6 +29,7 @@ class BrowserClient:
         self._playwright = None
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
+        self._homepage_warmed = False
 
     def __enter__(self) -> "BrowserClient":
         self._playwright = sync_playwright().start()
@@ -79,9 +80,16 @@ class BrowserClient:
             raise RuntimeError("BrowserClient is not started")
         page: Page = self._context.new_page()
         try:
-            # Visit homepage first to pick up cookies (helps with some WAF rules).
-            page.goto("https://www.competitionsciences.org/", wait_until="domcontentloaded", timeout=60_000)
-            page.wait_for_timeout(1500)
+            # Warm cookies once per session — visiting homepage on every detail fetch
+            # made CI runs extremely slow and more likely to trip WAF / timeouts.
+            if not self._homepage_warmed:
+                page.goto(
+                    "https://www.competitionsciences.org/",
+                    wait_until="domcontentloaded",
+                    timeout=60_000,
+                )
+                page.wait_for_timeout(1500)
+                self._homepage_warmed = True
             page.goto(url, wait_until="domcontentloaded", timeout=90_000)
             for selector in LISTING_READY_SELECTORS:
                 try:

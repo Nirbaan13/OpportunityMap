@@ -6,10 +6,14 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
+import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -18,6 +22,48 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Payment, PaymentAttempt, PaymentWebhookEvent, PremiumGrant, User
 from app.services.payment_service import recompute_premium
+
+logger = logging.getLogger(__name__)
+
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+
+def _format_polar_error_body(raw: bytes, http_status: int) -> str:
+    """Turn Polar's JSON/text error body into a short, user-visible message."""
+    text = raw.decode("utf-8", errors="replace").strip()
+    if not text:
+        return f"Polar rejected the checkout request (HTTP {http_status})"
+
+    try:
+        body = json.loads(text)
+    except json.JSONDecodeError:
+        return f"Polar rejected the checkout request: {text[:300]}"
+
+    if isinstance(body, dict):
+        detail = body.get("detail")
+        if isinstance(detail, str) and detail.strip():
+            return f"Polar rejected the checkout request: {detail.strip()[:400]}"
+        if isinstance(detail, list):
+            parts: list[str] = []
+            for item in detail[:5]:
+                if isinstance(item, dict):
+                    loc = item.get("loc") or item.get("location")
+                    msg = item.get("msg") or item.get("message") or item
+                    if isinstance(loc, list) and loc:
+                        parts.append(f"{'.'.join(str(x) for x in loc)}: {msg}")
+                    else:
+                        parts.append(str(msg))
+                else:
+                    parts.append(str(item))
+            if parts:
+                return "Polar rejected the checkout request: " + "; ".join(parts)[:400]
+        error = body.get("error") or body.get("message")
+        if isinstance(error, str) and error.strip():
+            return f"Polar rejected the checkout request: {error.strip()[:400]}"
+
+    return f"Polar rejected the checkout request: {text[:300]}"
 
 
 def _polar_request(
@@ -38,15 +84,63 @@ def _polar_request(
         with urllib.request.urlopen(req, timeout=30) as response:
             return json.loads(response.read().decode())
     except urllib.error.HTTPError as exc:
+        raw = exc.read() if hasattr(exc, "read") else b""
+        detail = _format_polar_error_body(raw, exc.code)
+        logger.error(
+            "Polar %s %s failed (%s): %s",
+            method,
+            path,
+            exc.code,
+            raw.decode("utf-8", errors="replace")[:1000],
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Polar rejected the checkout request",
+            detail=detail,
         ) from exc
     except (urllib.error.URLError, TimeoutError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Could not reach Polar. Please try again.",
         ) from exc
+
+
+def _require_polar_product_id() -> str:
+    product_id = settings.polar_product_id.strip()
+    if not product_id:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="International checkout is not configured yet.",
+        )
+    if not _UUID_RE.match(product_id):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "POLAR_PRODUCT_ID must be the product UUID from Polar "
+                "(Dashboard → Products → ⋮ → Copy Product ID)."
+            ),
+        )
+    # Normalize to canonical UUID string Polar expects.
+    return str(UUID(product_id))
+
+
+def _checkout_success_url() -> str:
+    base = settings.frontend_url.strip().rstrip("/")
+    if not base:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="FRONTEND_URL is not configured for Polar checkout redirects.",
+        )
+    parsed = urllib.parse.urlparse(base)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "FRONTEND_URL must be an absolute http(s) URL "
+                "(e.g. https://opportunitymap.info)."
+            ),
+        )
+    # Polar validates success_url as a URI; include CHECKOUT_ID for post-pay reconcile.
+    return f"{base}/pricing?polar=success&checkout_id={{CHECKOUT_ID}}"
 
 
 def create_checkout(db: Session, user: User) -> dict[str, str]:
@@ -57,18 +151,27 @@ def create_checkout(db: Session, user: User) -> dict[str, str]:
             detail="International checkout is not configured yet.",
         )
 
-    success_url = f"{settings.frontend_url.rstrip('/')}/pricing?polar=success"
-    payload = {
-        "products": [settings.polar_product_id],
+    product_id = _require_polar_product_id()
+    success_url = _checkout_success_url()
+    return_url = f"{settings.frontend_url.strip().rstrip('/')}/pricing"
+    payload: dict[str, Any] = {
+        "products": [product_id],
         "customer_email": user.email,
         "external_customer_id": str(user.id),
         "success_url": success_url,
+        "return_url": return_url,
         "metadata": {
             "user_id": str(user.id),
             "email": user.email,
             "plan": "yearly_subscription",
         },
     }
+    # Prefill billing country from profile when available (helps Polar tax / validation).
+    profile = getattr(user, "profile", None)
+    country = getattr(profile, "country_code", None) if profile is not None else None
+    if isinstance(country, str) and len(country.strip()) == 2:
+        payload["customer_billing_address"] = {"country": country.strip().upper()}
+
     checkout = _polar_request("POST", "/checkouts/", payload)
     url = checkout.get("url")
     if not isinstance(url, str) or not url:
