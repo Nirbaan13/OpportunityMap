@@ -406,28 +406,24 @@ export function PremiumPaywall({
           <button
             type="button"
             onClick={() => chooseRegion("india")}
-            className={`rounded-md border px-3 py-2.5 text-left text-sm transition ${
+            className={`rounded-md border px-3 py-2.5 text-center text-sm font-semibold transition ${
               region === "india"
                 ? "border-accent bg-accent/10 text-ink"
                 : "border-line text-ink-soft hover:border-accent/40"
             }`}
           >
-            <span className="block font-semibold text-ink">India</span>
-            <span className="mt-0.5 block text-xs">Razorpay · ₹{config.price_inr}</span>
+            India
           </button>
           <button
             type="button"
             onClick={() => chooseRegion("international")}
-            className={`rounded-md border px-3 py-2.5 text-left text-sm transition ${
+            className={`rounded-md border px-3 py-2.5 text-center text-sm font-semibold transition ${
               region === "international"
                 ? "border-accent bg-accent/10 text-ink"
                 : "border-line text-ink-soft hover:border-accent/40"
             }`}
           >
-            <span className="block font-semibold text-ink">Outside India</span>
-            <span className="mt-0.5 block text-xs">
-              Polar · ${config.price_usd.toFixed(2)}
-            </span>
+            Outside India
           </button>
         </div>
       ) : null}
@@ -435,7 +431,7 @@ export function PremiumPaywall({
       {config && region === "india" ? (
         <p className="mt-3 font-display text-2xl font-bold text-ink">
           ₹{config.price_inr}
-          <span className="text-base font-medium text-ink-soft"> / 365 days</span>
+          <span className="text-base font-medium text-ink-soft"> / year</span>
         </p>
       ) : null}
       {config && region === "international" ? (
