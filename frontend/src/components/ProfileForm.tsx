@@ -148,8 +148,9 @@ export function ProfileForm({ token, existing, onSaved, onCancel }: ProfileFormP
           minLength={2}
           maxLength={2}
           placeholder="IN"
+          title="Two-letter ISO code (e.g. IN for India, not +91)"
           value={countryCode}
-          onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
+          onChange={(e) => setCountryCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ""))}
         />
       </section>
 

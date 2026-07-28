@@ -67,6 +67,20 @@ class Settings(BaseSettings):
             return normalize_database_url(value)
         return value
 
+    @field_validator("smtp_port", mode="before")
+    @classmethod
+    def _normalize_smtp_port(cls, value: object) -> object:
+        if value == "" or value is None:
+            return 587
+        return value
+
+    @field_validator("smtp_use_tls", mode="before")
+    @classmethod
+    def _normalize_smtp_use_tls(cls, value: object) -> object:
+        if value == "" or value is None:
+            return True
+        return value
+
     @field_validator("environment")
     @classmethod
     def _normalize_environment(cls, value: str) -> str:

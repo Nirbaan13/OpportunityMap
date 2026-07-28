@@ -48,7 +48,10 @@ class ProfileWriteRequest(BaseModel):
     @field_validator("country_code")
     @classmethod
     def normalize_country_code(cls, value: str) -> str:
-        return value.upper()
+        code = value.strip().upper()
+        if not code.isalpha():
+            raise ValueError("Country code must be two letters (e.g. IN for India, US for United States).")
+        return code
 
     @field_validator("interest_slugs", "completed_activity_slugs", "planned_activity_slugs")
     @classmethod
