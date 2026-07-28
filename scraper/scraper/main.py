@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Callable
+from typing import TypeVar
 
 import scraper.db  # noqa: F401 — adds backend/ to sys.path for SQLAlchemy models
 
@@ -41,6 +43,24 @@ SOURCES = (
     "competition_sciences",
     "all",
 )
+
+# Network / WAF flaky in CI. On `--source all`, treat these as soft-fail so curated
+# catalog seeds + enrichment + maintenance (country/field backfill) still finish and
+# the scheduled workflow can exit 0. Single-source runs still hard-fail.
+LIVE_NETWORK_SOURCES = frozenset(
+    {
+        "pathways_to_science",
+        "devpost",
+        "competition_sciences",
+    }
+)
+
+T = TypeVar("T")
+
+
+def is_soft_fail_source(requested_source: str, failed_source: str) -> bool:
+    """True when a live-network source failure should not fail `--source all`."""
+    return requested_source == "all" and failed_source in LIVE_NETWORK_SOURCES
 
 
 def _run_source(
@@ -84,6 +104,29 @@ def _run_source(
     if source == "global_competitions":
         return seed_global_competitions(db)
     raise ValueError(f"Unknown source: {source}")
+
+
+def _run_maintenance_step(
+    name: str,
+    fn: Callable[[], T],
+    *,
+    soft: bool,
+    db,
+) -> T | None:
+    try:
+        return fn()
+    except Exception:
+        if soft:
+            logger.exception(
+                "Maintenance step %s failed (soft-fail); continuing", name
+            )
+            print(f"Maintenance step {name} FAILED (soft-fail); continuing.")
+            try:
+                db.rollback()
+            except Exception:
+                logger.exception("Could not rollback after %s failure", name)
+            return None
+        raise
 
 
 def main() -> None:
@@ -137,6 +180,7 @@ def main() -> None:
 
     db = SessionLocal()
     failures: list[str] = []
+    soft_failures: list[str] = []
     try:
         sources = (
             [
@@ -165,9 +209,10 @@ def main() -> None:
                 for key, value in stats.items():
                     print(f"  {key}: {value}")
             except Exception:
-                # ICS is frequently blocked in CI (403/WAF); treat as soft-fail on --source all.
-                soft = args.source == "all" and source == "competition_sciences"
+                # Live sites are frequently blocked / flaky in CI; soft-fail on --source all.
+                soft = is_soft_fail_source(args.source, source)
                 if soft:
+                    soft_failures.append(source)
                     logger.exception(
                         "Source %s failed (soft-fail); continuing so maintenance still runs",
                         source,
@@ -214,19 +259,62 @@ def main() -> None:
                     logger.exception("Could not rollback after enrichment failure")
 
         if not args.skip_maintenance:
-            filled = backfill_eligible_countries(db)
-            reclassified = backfill_opportunity_fields(db)
-            deactivated = deactivate_past_deadlines(db)
-            junk = deactivate_unusable_titles(db)
-            stale = deactivate_stale_listings(db)
-            print(f"\nMaintenance: backfilled countries on {filled} opportunit(ies)")
-            print(f"Maintenance: reclassified fields on {reclassified} opportunit(ies)")
-            print(f"Maintenance: deactivated {deactivated} past-deadline opportunit(ies)")
-            print(f"Maintenance: deactivated {junk} unusable-title opportunit(ies)")
-            print(f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)")
+            # On --source all, isolate each step so a field-backfill bug cannot skip
+            # country backfill / deadline deactivation (and vice versa).
+            soft_maint = args.source == "all"
+            filled = _run_maintenance_step(
+                "backfill_eligible_countries",
+                lambda: backfill_eligible_countries(db),
+                soft=soft_maint,
+                db=db,
+            )
+            reclassified = _run_maintenance_step(
+                "backfill_opportunity_fields",
+                lambda: backfill_opportunity_fields(db),
+                soft=soft_maint,
+                db=db,
+            )
+            deactivated = _run_maintenance_step(
+                "deactivate_past_deadlines",
+                lambda: deactivate_past_deadlines(db),
+                soft=soft_maint,
+                db=db,
+            )
+            junk = _run_maintenance_step(
+                "deactivate_unusable_titles",
+                lambda: deactivate_unusable_titles(db),
+                soft=soft_maint,
+                db=db,
+            )
+            stale = _run_maintenance_step(
+                "deactivate_stale_listings",
+                lambda: deactivate_stale_listings(db),
+                soft=soft_maint,
+                db=db,
+            )
+            if filled is not None:
+                print(f"\nMaintenance: backfilled countries on {filled} opportunit(ies)")
+            if reclassified is not None:
+                print(
+                    f"Maintenance: reclassified fields on {reclassified} opportunit(ies)"
+                )
+            if deactivated is not None:
+                print(
+                    f"Maintenance: deactivated {deactivated} past-deadline opportunit(ies)"
+                )
+            if junk is not None:
+                print(
+                    f"Maintenance: deactivated {junk} unusable-title opportunit(ies)"
+                )
+            if stale is not None:
+                print(
+                    f"Maintenance: deactivated {stale} stale (unseen) opportunit(ies)"
+                )
     finally:
         db.close()
 
+    if soft_failures:
+        print(f"\nSoft-failed sources (non-fatal): {', '.join(soft_failures)}")
     if failures:
         print(f"\nCompleted with failures: {', '.join(failures)}")
         sys.exit(1)
