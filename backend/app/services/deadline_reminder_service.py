@@ -3,7 +3,8 @@
 Lead windows:
   - 90 days (≈ 3 months) and 30 days → students with overlapping interests
     (and hard eligibility: grade + country), who have a profile.
-  - 10 days and 1 day → only students who opted into Remind me on that opportunity.
+  - Remind me: day 10 and day 1 before deadline, plus a one-time catch-up
+    if the user opts in late (2–9 days left) and never got the 10-day alert.
 
 Each new reminder is stored in ``notifications`` and emailed to ``users.email``
 when SMTP is configured.
@@ -31,9 +32,8 @@ from app.services.email_service import send_email
 
 # Early awareness: interest overlap
 INTEREST_LEAD_DAYS = (90, 30)
-# Close deadlines: explicit Remind me opt-in
+# Close deadlines: explicit Remind me opt-in (dedupe keys)
 REMIND_ME_LEAD_DAYS = (10, 1)
-ALL_LEAD_DAYS = INTEREST_LEAD_DAYS + REMIND_ME_LEAD_DAYS
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,19 @@ def _days_until(deadline: datetime, now: datetime) -> int:
     return (d - n).days
 
 
+def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
+    """Return ``(dedupe_lead_days, display_days)`` for Remind me, or None.
+
+    - Exactly 1 day left → 1-day alert
+    - 2–10 days left → 10-day bucket (exact day 10, or late opt-in catch-up)
+    """
+    if days_left == 1:
+        return (1, 1)
+    if 2 <= days_left <= 10:
+        return (10, days_left)
+    return None
+
+
 def _lead_label(lead_days: int) -> str:
     if lead_days == 90:
         return "about 3 months"
@@ -72,8 +85,8 @@ def _opportunity_url(opportunity_id: int) -> str:
     return f"{base}/opportunities/{opportunity_id}"
 
 
-def _build_copy(opportunity: Opportunity, lead_days: int) -> tuple[str, str]:
-    label = _lead_label(lead_days)
+def _build_copy(opportunity: Opportunity, display_days: int) -> tuple[str, str]:
+    label = _lead_label(display_days)
     title = f"Deadline in {label}: {opportunity.title}"
     if len(title) > 200:
         title = title[:197] + "..."
@@ -139,6 +152,7 @@ def _create_reminder(
     to_email: str,
     opportunity: Opportunity,
     lead_days: int,
+    display_days: int | None = None,
 ) -> _PendingMail | None:
     if _already_sent(
         db,
@@ -147,7 +161,8 @@ def _create_reminder(
         lead_days=lead_days,
     ):
         return None
-    title, message = _build_copy(opportunity, lead_days)
+    shown = display_days if display_days is not None else lead_days
+    title, message = _build_copy(opportunity, shown)
     db.add(
         Notification(
             user_id=user_id,
@@ -249,27 +264,39 @@ def run_deadline_reminders(
     for opportunity in opportunities:
         assert opportunity.deadline_at is not None
         days_left = _days_until(opportunity.deadline_at, now)
-        if days_left not in ALL_LEAD_DAYS:
-            continue
+        batches: list[tuple[int, int, list[tuple[int, str]]]] = []
 
         if days_left in INTEREST_LEAD_DAYS:
-            recipients = _interest_recipients(db, opportunity)
-        else:
-            recipients = _remind_me_recipients(db, opportunity.id)
-
-        for user_id, email in recipients:
-            mail = _create_reminder(
-                db,
-                user_id=user_id,
-                to_email=email,
-                opportunity=opportunity,
-                lead_days=days_left,
+            batches.append(
+                (days_left, days_left, _interest_recipients(db, opportunity))
             )
-            if mail is None:
-                skipped += 1
-            else:
-                created += 1
-                pending_mail.append(mail)
+
+        remind = _remind_me_schedule(days_left)
+        if remind is not None:
+            dedupe_lead, display_days = remind
+            batches.append(
+                (
+                    dedupe_lead,
+                    display_days,
+                    _remind_me_recipients(db, opportunity.id),
+                )
+            )
+
+        for lead_days, display_days, recipients in batches:
+            for user_id, email in recipients:
+                mail = _create_reminder(
+                    db,
+                    user_id=user_id,
+                    to_email=email,
+                    opportunity=opportunity,
+                    lead_days=lead_days,
+                    display_days=display_days,
+                )
+                if mail is None:
+                    skipped += 1
+                else:
+                    created += 1
+                    pending_mail.append(mail)
 
     db.commit()
 

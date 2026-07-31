@@ -26,6 +26,16 @@ def main() -> None:
             f"skipped {result.skipped_existing} already-sent; "
             f"emails sent {result.emails_sent}, failed/skipped {result.emails_failed}."
         )
+        if result.opportunities_checked == 0:
+            print(
+                "Warning: no active opportunities with a future deadline_at. "
+                "Check DATABASE_URL and that scraped rows have deadlines."
+            )
+        elif result.created == 0 and result.skipped_existing == 0:
+            print(
+                "Note: no reminders matched today. Interest alerts need exact "
+                "90/30 days left; Remind me needs 1–10 days left + remind_me + premium."
+            )
         renewal = run_renewal_reminders(db)
         print(
             f"Renewal reminders: checked {renewal.candidates_checked}; "
