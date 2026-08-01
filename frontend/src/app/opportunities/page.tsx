@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { OpportunityRow } from "@/components/OpportunityRow";
 import { api } from "@/lib/api";
+import { loginHref } from "@/lib/auth-redirect";
 import { OPPORTUNITY_TYPES } from "@/lib/opportunity-labels";
 import {
   ApiError,
@@ -336,10 +337,10 @@ export default function OpportunitiesPage() {
             <p className="col-span-2 pt-1 text-xs leading-relaxed text-ink-soft sm:w-full sm:pt-2 sm:text-sm">
               {!user ? (
                 <>
-                  <Link href="/login" className="text-accent hover:underline">
+                  <Link href={loginHref("/opportunities")} className="text-accent hover:underline">
                     Log in
                   </Link>{" "}
-                  and unlock premium for personalized ranking.
+                  for free Remind me, or unlock Premium for personalized ranking.
                 </>
               ) : !user.is_premium ? (
                 <>

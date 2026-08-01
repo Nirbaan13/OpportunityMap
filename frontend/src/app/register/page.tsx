@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { AuthShell } from "@/components/AuthShell";
 import { TextField } from "@/components/FormFields";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { ApiError } from "@/types/api";
 
-export default function RegisterPage() {
+function RegisterForm() {
   const { register, user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"), "/profile");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +22,9 @@ export default function RegisterPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/profile");
+      router.replace(nextPath);
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, nextPath]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -29,7 +32,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       await register(email.trim(), password);
-      router.push("/profile");
+      router.push(nextPath);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Registration failed.");
     } finally {
@@ -40,11 +43,14 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Start with email and password. Next you will build your student profile."
+      subtitle="Start with email and password. Turn on free Remind me anytime while you browse."
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-accent hover:underline">
+          <Link
+            href={`/login?next=${encodeURIComponent(nextPath)}`}
+            className="font-medium text-accent hover:underline"
+          >
             Log in
           </Link>
         </>
@@ -70,16 +76,29 @@ export default function RegisterPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <p className="text-xs text-ink-soft">Use at least 8 characters.</p>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <button
           type="submit"
           disabled={submitting}
           className="w-full rounded-md bg-ink px-4 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft disabled:opacity-60"
         >
-          {submitting ? "Creating account…" : "Create account"}
+          {submitting ? "Creating…" : "Create account"}
         </button>
       </form>
     </AuthShell>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="atmosphere min-h-[calc(100vh-5rem)] px-6 py-16">
+          <p className="text-ink-soft">Loading…</p>
+        </main>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

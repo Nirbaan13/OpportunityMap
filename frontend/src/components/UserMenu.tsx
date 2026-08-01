@@ -209,10 +209,19 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
       ) : (
         <div className="border-b border-line px-1 py-3 sm:px-4">
           <p className="text-sm text-ink-soft">
-            Free Remind me sends a website alert about a month before deadlines. Premium
-            adds email, Saved, matches, and last-week reminders.
+            Free Remind me sends a website alert about a month before deadlines. Manage
+            them under Reminders; Premium adds email, Saved, and matches.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/reminders"
+              role="menuitem"
+              className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11"
+              onClick={() => setOpen(false)}
+            >
+              Reminders
+              {stats.reminders > 0 ? ` (${stats.reminders})` : ""}
+            </Link>
             <Link
               href="/notifications"
               role="menuitem"
@@ -221,14 +230,6 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
             >
               Alerts
               {stats.unread > 0 ? ` (${stats.unread})` : ""}
-            </Link>
-            <Link
-              href="/roadmap"
-              role="menuitem"
-              className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11"
-              onClick={() => setOpen(false)}
-            >
-              View roadmap
             </Link>
           </div>
         </div>
@@ -242,19 +243,30 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
           <MenuLink href="/profile" active={pathname === "/profile"}>
             Profile
           </MenuLink>
-          <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
-            {isPremium ? "Roadmap" : "View roadmap"}
-          </MenuLink>
           {isPremium ? (
-            <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
-              Saved
-              {stats.saved > 0 ? (
+            <>
+              <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
+                Roadmap
+              </MenuLink>
+              <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
+                Saved
+                {stats.saved > 0 ? (
+                  <span className="ml-auto text-xs tabular-nums text-ink-soft">
+                    {stats.saved}
+                  </span>
+                ) : null}
+              </MenuLink>
+            </>
+          ) : (
+            <MenuLink href="/reminders" active={pathname.startsWith("/reminders")}>
+              Reminders
+              {stats.reminders > 0 ? (
                 <span className="ml-auto text-xs tabular-nums text-ink-soft">
-                  {stats.saved}
+                  {stats.reminders}
                 </span>
               ) : null}
             </MenuLink>
-          ) : null}
+          )}
           <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
             Alerts
             {stats.unread > 0 ? (
@@ -268,7 +280,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
         <div className="py-2 px-1 text-sm text-ink-soft">
           {isPremium
             ? "Use the tabs below for Browse, Roadmap, Saved, Alerts, and Profile."
-            : "Use the tabs below for Browse, Roadmap, Alerts, and Profile."}
+            : "Use the tabs below for Browse, Reminders, Alerts, and Profile."}
         </div>
       )}
     </>

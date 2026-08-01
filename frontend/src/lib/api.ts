@@ -290,6 +290,16 @@ export const api = {
     return request<{ opportunity_ids: number[] }>("/bookmarks/remind-me-ids", { token });
   },
 
+  listRemindMe(token: string, params: BookmarkListParams = {}) {
+    return request<BookmarkListResponse>(
+      `/bookmarks/remind-me${toQuery({
+        page: params.page,
+        page_size: params.page_size,
+      })}`,
+      { token },
+    );
+  },
+
   setBookmarkStatus(token: string, opportunityId: number, status: "saved" | "completed") {
     return request<BookmarkItem>(`/bookmarks/${opportunityId}`, {
       method: "PATCH",

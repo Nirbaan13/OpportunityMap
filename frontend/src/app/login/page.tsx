@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { AuthShell } from "@/components/AuthShell";
 import { TextField } from "@/components/FormFields";
+import { safeNextPath } from "@/lib/auth-redirect";
 import { ApiError } from "@/types/api";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"), "/profile");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +22,17 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace(user.has_profile ? "/profile" : "/profile");
+      router.replace(nextPath);
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, nextPath]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      const me = await login(email.trim(), password);
-      router.push("/profile");
-      void me;
+      await login(email.trim(), password);
+      router.push(nextPath);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Login failed.");
     } finally {
@@ -41,11 +43,14 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Welcome back"
-      subtitle="Log in to update your profile and see matched opportunities."
+      subtitle="Log in for free Remind me alerts, your profile, and Premium matches."
       footer={
         <>
           New here?{" "}
-          <Link href="/register" className="font-medium text-accent hover:underline">
+          <Link
+            href={`/register?next=${encodeURIComponent(nextPath)}`}
+            className="font-medium text-accent hover:underline"
+          >
             Create an account
           </Link>
         </>
@@ -86,5 +91,19 @@ export default function LoginPage() {
         </button>
       </form>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="atmosphere min-h-[calc(100vh-5rem)] px-6 py-16">
+          <p className="text-ink-soft">Loading…</p>
+        </main>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

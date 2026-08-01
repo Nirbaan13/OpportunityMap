@@ -45,6 +45,33 @@ def list_bookmarks(
     return rows, total
 
 
+def list_remind_me(
+    db: Session,
+    user: User,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[Bookmark], int]:
+    """Opportunities with Remind me on — available to free and premium users."""
+    base = select(Bookmark).where(
+        Bookmark.user_id == user.id,
+        Bookmark.remind_me.is_(True),
+    )
+    total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    rows = list(
+        db.scalars(
+            _bookmark_query(user.id)
+            .where(Bookmark.remind_me.is_(True))
+            .order_by(Bookmark.created_at.desc(), Bookmark.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        .unique()
+        .all()
+    )
+    return rows, total
+
+
 def get_bookmark(db: Session, user: User, opportunity_id: int) -> Bookmark:
     bookmark = db.scalar(
         _bookmark_query(user.id).where(Bookmark.opportunity_id == opportunity_id)

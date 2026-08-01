@@ -285,10 +285,16 @@ export default function ProfilePage() {
         <div className="mt-12 border-t border-line pt-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
-              href="/roadmap"
+              href={user.is_premium ? "/roadmap" : "/reminders"}
               className="inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-5 py-3 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:w-auto"
             >
-              View roadmap
+              {user.is_premium ? "View roadmap" : "Your reminders"}
+            </Link>
+            <Link
+              href="/opportunities"
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-line px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:w-auto"
+            >
+              Browse opportunities
             </Link>
             <button
               type="button"
@@ -303,7 +309,8 @@ export default function ProfilePage() {
             <Link href="/opportunities" className="text-accent hover:underline">
               Opportunities
             </Link>{" "}
-            to browse, save, and mark listings done.
+            and turn on Remind me
+            {user.is_premium ? ", save listings, and mark them done." : " for free deadline alerts."}
           </p>
           <button
             type="button"

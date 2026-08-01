@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { api } from "@/lib/api";
+import { loginHref } from "@/lib/auth-redirect";
 import { ApiError } from "@/types/api";
 
 type RemindMeButtonProps = {
@@ -22,13 +24,18 @@ export function RemindMeButton({
   className = "",
 }: RemindMeButtonProps) {
   const { user, token } = useAuth();
+  const pathname = usePathname();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!user || !token) {
+    const returnTo =
+      Number.isFinite(opportunityId) && opportunityId > 0
+        ? `/opportunities/${opportunityId}`
+        : pathname || "/opportunities";
     return (
       <Link
-        href="/login"
+        href={loginHref(returnTo)}
         className={`inline-flex min-h-11 items-center text-sm font-medium text-ink-soft transition hover:text-accent ${className}`}
         title="Log in to get a website reminder about a month before the deadline"
       >

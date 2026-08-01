@@ -89,19 +89,35 @@ Header: `Authorization: Bearer <token>`
 | `404` | Not bookmarked (or opportunity id unused by this user) |
 | `401` | Missing/invalid token |
 
+## List Remind me
+
+`GET /api/v1/bookmarks/remind-me`
+
+Header: `Authorization: Bearer <token>` (free or premium)
+
+Same pagination as the Saved list. Returns only rows with `remind_me: true`.
+
+Also: `GET /api/v1/bookmarks/remind-me-ids` returns `{ "opportunity_ids": [...] }` for feed toggles.
+
 ## Set Remind me
 
-`PATCH /api/v1/bookmarks/{opportunity_id}`
+`PUT /api/v1/bookmarks/{opportunity_id}/remind-me`
 
-Header: `Authorization: Bearer <token>`
+```json
+{ "remind_me": true }
+```
+
+Available to **all logged-in users**. Free: ~30-day website inbox. Premium: 10-day / 1-day inbox + email (see [notifications-api.md](notifications-api.md)).
+
+Premium Saved list can also patch via:
+
+`PATCH /api/v1/bookmarks/{opportunity_id}`
 
 ```json
 {
   "remind_me": true
 }
 ```
-
-Creates a bookmark if turning Remind me **on** and none exists. Opt-in for **10-day** and **1-day** website deadline alerts (see [notifications-api.md](notifications-api.md)).
 
 ## Remove a bookmark
 

@@ -19,7 +19,7 @@ Membership lasts **365 days** from payment (`users.premium_until`). Paying again
 | Opportunity detail (read) | Saved bookmarks |
 | Register / login | Interest alerts (~90 / ~30 days) + email |
 | Profile create/edit | Remind me at 10 days / 1 day + email |
-| Remind me (~30-day website inbox) | Full notifications inbox + reminder emails |
+| Remind me (~30-day website inbox) + `/reminders` | Full notifications inbox + reminder emails |
 
 ## Payment (Razorpay)
 

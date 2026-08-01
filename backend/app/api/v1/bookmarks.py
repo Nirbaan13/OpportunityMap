@@ -61,6 +61,30 @@ def list_remind_me_ids(
     return RemindMeIdList(opportunity_ids=ids)
 
 
+@router.get("/remind-me", response_model=BookmarkListResponse)
+def list_remind_me(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> BookmarkListResponse:
+    """Paginated Remind me list — free and premium (inbox alerts, not Saved)."""
+    rows, total = bookmark_service.list_remind_me(
+        db,
+        current_user,
+        page=page,
+        page_size=page_size,
+    )
+    total_pages = ceil(total / page_size) if total else 0
+    return BookmarkListResponse(
+        items=[_to_item(row) for row in rows],
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
+    )
+
+
 @router.get("", response_model=BookmarkListResponse)
 def list_my_bookmarks(
     page: int = Query(default=1, ge=1),

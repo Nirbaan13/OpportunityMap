@@ -60,7 +60,7 @@ export function MobileBottomNav() {
       ]
     : [
         { href: "/opportunities", label: "Browse", match: "/opportunities" },
-        { href: "/roadmap", label: "Roadmap", match: "/roadmap" },
+        { href: "/reminders", label: "Reminders", match: "/reminders" },
         {
           href: "/notifications",
           label: "Alerts",

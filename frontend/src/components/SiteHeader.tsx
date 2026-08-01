@@ -114,12 +114,12 @@ export function SiteHeader() {
                 </>
               ) : (
                 <Link
-                  href="/roadmap"
+                  href="/reminders"
                   className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                    pathname.startsWith("/roadmap") ? "text-accent" : "text-ink-soft"
+                    pathname.startsWith("/reminders") ? "text-accent" : "text-ink-soft"
                   }`}
                 >
-                  View roadmap
+                  Reminders
                 </Link>
               )}
               <Link
@@ -215,11 +215,11 @@ export function SiteHeader() {
                     Opportunities
                   </Link>
                   <Link
-                    href="/roadmap"
+                    href="/reminders"
                     onClick={() => setMobileOpen(false)}
                     className="flex min-h-12 items-center rounded-md px-3 text-base font-medium text-ink-soft"
                   >
-                    View roadmap
+                    Reminders
                   </Link>
                   <Link
                     href="/register"

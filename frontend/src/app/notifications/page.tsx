@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { api } from "@/lib/api";
+import { loginHref } from "@/lib/auth-redirect";
 import { ApiError, NotificationItem } from "@/types/api";
 
 const PAGE_SIZE = 20;
@@ -98,7 +99,7 @@ export default function NotificationsPage() {
             Notifications
           </h1>
           <p className="mt-4 text-ink-soft">
-            <Link href="/login" className="text-accent hover:underline">
+            <Link href={loginHref("/notifications")} className="text-accent hover:underline">
               Log in
             </Link>{" "}
             to see deadline alerts in your inbox.
