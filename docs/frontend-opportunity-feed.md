@@ -7,7 +7,7 @@ Browse and filter scraped opportunities, plus a personalized “For you” feed.
 | Path | Purpose |
 |------|---------|
 | `/opportunities` | Feed with filters; Browse all / For you modes |
-| `/opportunities/[id]` | Opportunity detail + apply/source links |
+| `/opportunities/[id]` | Opportunity detail + apply/source links; server `generateMetadata` + JSON-LD for SEO/share |
 
 ## Browse all
 

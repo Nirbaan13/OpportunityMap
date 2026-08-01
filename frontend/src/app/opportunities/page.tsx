@@ -546,11 +546,47 @@ export default function OpportunitiesPage() {
           {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
           {!loading && !error && total === 0 ? (
-            <p className="mt-8 text-ink-soft">
-              No opportunities match these filters
-              {field ? ` for this field` : ""}. Try another field, clear filters, or turn off
-              “Open deadlines only” to include year-round listings.
-            </p>
+            <div className="mt-8 space-y-3 text-ink-soft">
+              <p>
+                No opportunities match these filters
+                {field ? " for this field" : ""}.
+              </p>
+              <p className="text-sm">
+                Try another field, clear filters, or turn off “Open deadlines only” to
+                include year-round listings.
+              </p>
+              <p className="text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftQ("");
+                    setQ("");
+                    setOpportunityType("");
+                    setField("");
+                    setOpenOnly(false);
+                    setEligibleForMe(false);
+                    setPage(1);
+                  }}
+                  className="font-medium text-accent hover:underline"
+                >
+                  Clear all filters
+                </button>
+                {" · "}
+                {user ? (
+                  <>
+                    Turn on <span className="text-ink">Remind me</span> on listings you like
+                    for a free website alert about a month before the deadline.
+                  </>
+                ) : (
+                  <>
+                    <Link href="/register" className="font-medium text-accent hover:underline">
+                      Create a free account
+                    </Link>{" "}
+                    to use Remind me on opportunities you care about.
+                  </>
+                )}
+              </p>
+            </div>
           ) : null}
 
           <div className="mt-4 space-y-3 sm:mt-4 sm:space-y-0">
