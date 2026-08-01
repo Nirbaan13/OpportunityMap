@@ -99,3 +99,27 @@ def test_production_payments_require_webhook_secret() -> None:
             razorpay_key_secret="api-secret",
             razorpay_webhook_secret="",
         )
+
+
+def test_production_polar_requires_webhook_secret() -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            environment="production",
+            secret_key="secure-production-secret",
+            polar_access_token="polar_pat_example",
+            polar_product_id="11111111-1111-1111-1111-111111111111",
+            polar_webhook_secret="",
+        )
+
+
+def test_production_polar_ok_with_webhook_secret() -> None:
+    cfg = Settings(
+        _env_file=None,
+        environment="production",
+        secret_key="secure-production-secret",
+        polar_access_token="polar_pat_example",
+        polar_product_id="11111111-1111-1111-1111-111111111111",
+        polar_webhook_secret="whsec_test",
+    )
+    assert cfg.polar_enabled is True

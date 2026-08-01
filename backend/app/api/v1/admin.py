@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.rate_limit import rate_limit_dependency
 from app.database import get_db
 from app.schemas.admin import (
     AdminCountRow,
@@ -15,6 +16,8 @@ from app.schemas.admin import (
 from app.services.admin_service import build_admin_overview
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+_limit_admin = rate_limit_dependency(scope="admin", limit=30, window_seconds=60)
 
 
 def require_admin(x_admin_password: str | None = Header(default=None)) -> None:
@@ -34,7 +37,8 @@ def require_admin(x_admin_password: str | None = Header(default=None)) -> None:
 
 @router.get("/overview", response_model=AdminOverviewResponse)
 def admin_overview(
-    _: None = Depends(require_admin),
+    _: None = Depends(_limit_admin),
+    __: None = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AdminOverviewResponse:
     """Founder dashboard: users, premium, payments, listings."""

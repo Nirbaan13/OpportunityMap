@@ -333,10 +333,13 @@ export const api = {
   },
 
   createPolarCheckout(token: string) {
-    return request<{ checkout_url: string }>("/payments/polar/create-checkout", {
-      method: "POST",
-      token,
-    });
+    return request<{ checkout_url: string; checkout_id: string | null }>(
+      "/payments/polar/create-checkout",
+      {
+        method: "POST",
+        token,
+      },
+    );
   },
 
   verifyPayment(
@@ -358,6 +361,13 @@ export const api = {
     return request<PaymentStatus>(`/payments/status/${encodeURIComponent(orderId)}`, {
       token,
     });
+  },
+
+  polarCheckoutStatus(token: string, checkoutId: string) {
+    return request<PaymentStatus>(
+      `/payments/polar/status/${encodeURIComponent(checkoutId)}`,
+      { token },
+    );
   },
 
   devUnlockPremium(token: string) {

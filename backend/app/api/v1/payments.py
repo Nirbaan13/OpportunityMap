@@ -13,6 +13,7 @@ from app.schemas.payment import (
     PaymentConfigResponse,
     PaymentStatusResponse,
     PolarCheckoutResponse,
+    PolarCheckoutStatusResponse,
     VerifyPaymentRequest,
     WebhookResponse,
 )
@@ -59,6 +60,18 @@ def create_polar_checkout(
 ) -> PolarCheckoutResponse:
     data = polar_service.create_checkout(db, current_user)
     return PolarCheckoutResponse(**data)
+
+
+@router.get("/polar/status/{checkout_id}", response_model=PolarCheckoutStatusResponse)
+def polar_checkout_status(
+    checkout_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PolarCheckoutStatusResponse:
+    """Reconcile Polar checkout after redirect (webhook may still be in flight)."""
+    return PolarCheckoutStatusResponse(
+        **polar_service.reconcile_checkout(db, current_user, checkout_id)
+    )
 
 
 @router.post("/verify", response_model=UserResponse)

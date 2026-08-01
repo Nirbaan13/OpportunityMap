@@ -1,8 +1,9 @@
 """Create deadline reminders: website inbox + email to registered address.
 
 Lead windows:
-  - 90 days (≈ 3 months) and 30 days → students with overlapping interests
-    (and hard eligibility: grade + country), who have a profile.
+  - Interest overlap (premium + profile eligibility):
+      * ~90 days: exact day 90, or catch-up if the job missed days 88–89
+      * ~30 days: exact day 30, or catch-up if the job missed days 28–29
   - Remind me: day 10 and day 1 before deadline, plus a one-time catch-up
     if the user opts in late (2–9 days left) and never got the 10-day alert.
 
@@ -30,8 +31,10 @@ from app.models.enums import NotificationType
 from app.models.profile import profile_fields
 from app.services.email_service import send_email
 
-# Early awareness: interest overlap
+# Early awareness: interest overlap (dedupe keys)
 INTEREST_LEAD_DAYS = (90, 30)
+# Catch-up span after a missed exact day (inclusive of the exact lead day).
+INTEREST_CATCHUP_SLACK = 2
 # Close deadlines: explicit Remind me opt-in (dedupe keys)
 REMIND_ME_LEAD_DAYS = (10, 1)
 
@@ -57,6 +60,19 @@ def _days_until(deadline: datetime, now: datetime) -> int:
     d = deadline.astimezone(UTC).date() if deadline.tzinfo else deadline.replace(tzinfo=UTC).date()
     n = now.astimezone(UTC).date()
     return (d - n).days
+
+
+def _interest_schedule(days_left: int) -> tuple[int, int] | None:
+    """Return ``(dedupe_lead_days, display_days)`` for interest alerts, or None.
+
+    Exact lead day or a short catch-up window so a missed Actions run still fires
+    once (same dedupe key as the exact day).
+    """
+    for lead in INTEREST_LEAD_DAYS:
+        # e.g. lead=90 → days 88..90; lead=30 → days 28..30
+        if lead - INTEREST_CATCHUP_SLACK <= days_left <= lead:
+            return (lead, days_left)
+    return None
 
 
 def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
@@ -266,9 +282,15 @@ def run_deadline_reminders(
         days_left = _days_until(opportunity.deadline_at, now)
         batches: list[tuple[int, int, list[tuple[int, str]]]] = []
 
-        if days_left in INTEREST_LEAD_DAYS:
+        interest = _interest_schedule(days_left)
+        if interest is not None:
+            dedupe_lead, display_days = interest
             batches.append(
-                (days_left, days_left, _interest_recipients(db, opportunity))
+                (
+                    dedupe_lead,
+                    display_days,
+                    _interest_recipients(db, opportunity),
+                )
             )
 
         remind = _remind_me_schedule(days_left)

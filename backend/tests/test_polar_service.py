@@ -11,11 +11,14 @@ from fastapi import HTTPException
 from app.config import settings
 from app.services.polar_service import (
     _POLAR_USER_AGENT,
+    _checkout_belongs_to_user,
     _checkout_success_url,
     _format_polar_error_body,
+    _map_checkout_status,
     _polar_request,
     _require_polar_product_id,
     create_checkout,
+    reconcile_checkout,
     verify_webhook_signature,
 )
 
@@ -156,3 +159,104 @@ def test_create_checkout_surfaces_polar_http_error(monkeypatch) -> None:
         create_checkout(db, user)
     assert exc.value.status_code == 502
     assert "Product is not available" in str(exc.value.detail)
+
+
+def test_checkout_belongs_to_user_via_metadata() -> None:
+    user = MagicMock()
+    user.id = 7
+    user.email = "student@example.com"
+    assert _checkout_belongs_to_user({"metadata": {"user_id": "7"}}, user)
+    assert not _checkout_belongs_to_user({"metadata": {"user_id": "9"}}, user)
+    assert _checkout_belongs_to_user({"external_customer_id": "7"}, user)
+    assert _checkout_belongs_to_user({"customer_email": "Student@Example.com"}, user)
+    assert not _checkout_belongs_to_user({}, user)
+
+
+def test_map_checkout_status() -> None:
+    assert _map_checkout_status("open", is_premium=False) == "created"
+    assert _map_checkout_status("confirmed", is_premium=False) == "created"
+    assert _map_checkout_status("confirmed", is_premium=True) == "paid"
+    assert _map_checkout_status("failed", is_premium=False) == "failed"
+    assert _map_checkout_status("expired", is_premium=False) == "failed"
+
+
+def test_reconcile_checkout_grants_from_confirmed_order(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "polar_access_token", "tok")
+    monkeypatch.setattr(
+        settings, "polar_product_id", "11111111-1111-1111-1111-111111111111"
+    )
+
+    checkout_id = "22222222-2222-2222-2222-222222222222"
+    order = {
+        "id": "ord_paid_1",
+        "billing_reason": "subscription_create",
+        "metadata": {"user_id": "7"},
+    }
+
+    def fake_polar(method: str, path: str, payload=None):
+        assert method == "GET"
+        if path == f"/checkouts/{checkout_id}":
+            return {
+                "id": checkout_id,
+                "status": "confirmed",
+                "metadata": {"user_id": "7"},
+                "external_customer_id": "7",
+                "order": order,
+            }
+        raise AssertionError(f"unexpected path {path}")
+
+    applied: list[dict] = []
+
+    def fake_apply(db, entity):
+        applied.append(entity)
+
+    monkeypatch.setattr(
+        "app.services.polar_service._polar_request", fake_polar
+    )
+    monkeypatch.setattr(
+        "app.services.polar_service._apply_paid_order", fake_apply
+    )
+
+    user = MagicMock()
+    user.id = 7
+    user.email = "student@example.com"
+    user.premium_until = None
+    db = MagicMock()
+
+    from datetime import UTC, datetime, timedelta
+
+    user.premium_until = datetime.now(UTC) + timedelta(days=365)
+
+    result = reconcile_checkout(db, user, checkout_id)
+    assert applied and applied[0]["id"] == "ord_paid_1"
+    assert result["order_id"] == checkout_id
+    assert result["status"] == "paid"
+    assert result["is_premium"] is True
+    db.commit.assert_called_once()
+
+
+def test_reconcile_checkout_rejects_other_users_checkout(monkeypatch) -> None:
+    monkeypatch.setattr(settings, "polar_access_token", "tok")
+    monkeypatch.setattr(
+        settings, "polar_product_id", "11111111-1111-1111-1111-111111111111"
+    )
+    checkout_id = "22222222-2222-2222-2222-222222222222"
+
+    monkeypatch.setattr(
+        "app.services.polar_service._polar_request",
+        lambda method, path, payload=None: {
+            "id": checkout_id,
+            "status": "confirmed",
+            "metadata": {"user_id": "99"},
+            "external_customer_id": "99",
+        },
+    )
+
+    user = MagicMock()
+    user.id = 7
+    user.email = "student@example.com"
+    db = MagicMock()
+
+    with pytest.raises(HTTPException) as exc:
+        reconcile_checkout(db, user, checkout_id)
+    assert exc.value.status_code == 404

@@ -86,7 +86,7 @@ alembic upgrade head
 | `RAZORPAY_KEY_SECRET` | matching private API secret |
 | `POLAR_ACCESS_TOKEN` | Polar organization access token |
 | `POLAR_PRODUCT_ID` | Polar yearly subscription product ID |
-| `POLAR_WEBHOOK_SECRET` | Polar webhook signing secret |
+| `POLAR_WEBHOOK_SECRET` | Polar webhook signing secret (required in production when Polar is enabled) |
 | `RAZORPAY_WEBHOOK_SECRET` | separate secret configured for the API webhook |
 | `ADMIN_PASSWORD` | long random password for `/admin` founder dashboard |
 

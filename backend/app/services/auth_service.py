@@ -4,10 +4,11 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.emails import normalize_email
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import PasswordResetToken, User
 from app.services.email_service import send_email
@@ -17,8 +18,17 @@ logger = logging.getLogger(__name__)
 RESET_TOKEN_TTL = timedelta(hours=1)
 
 
+def _find_user_by_email(db: Session, email: str) -> User | None:
+    """Match users case-insensitively (legacy rows may not be lowercased yet)."""
+    normalized = normalize_email(email)
+    return db.scalar(
+        select(User).where(func.lower(User.email) == normalized)
+    )
+
+
 def register_user(db: Session, email: str, password: str) -> User:
-    existing = db.scalar(select(User).where(User.email == email))
+    email = normalize_email(email)
+    existing = _find_user_by_email(db, email)
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -33,7 +43,8 @@ def register_user(db: Session, email: str, password: str) -> User:
 
 
 def authenticate_user(db: Session, email: str, password: str) -> str:
-    user = db.scalar(select(User).where(User.email == email))
+    email = normalize_email(email)
+    user = _find_user_by_email(db, email)
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -45,6 +56,11 @@ def authenticate_user(db: Session, email: str, password: str) -> str:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is inactive",
         )
+
+    # Heal mixed-case legacy emails so JWT subject stays stable.
+    if user.email != email:
+        user.email = email
+        db.commit()
 
     return create_access_token(user.email)
 
@@ -79,7 +95,7 @@ def _build_reset_email(raw_token: str) -> tuple[str, str]:
 
 def request_password_reset(db: Session, email: str) -> None:
     """Always succeeds silently — does not reveal whether the email is registered."""
-    user = db.scalar(select(User).where(User.email == email.strip().lower()))
+    user = _find_user_by_email(db, email)
     if user is None or not user.is_active:
         logger.info("Password reset requested for unknown/inactive email")
         return

@@ -20,6 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.core.premium import premium_is_active, sync_premium_flag
 from app.models import Payment, PaymentAttempt, PaymentWebhookEvent, PremiumGrant, User
 from app.services.payment_service import recompute_premium
 
@@ -231,7 +232,96 @@ def create_checkout(db: Session, user: User) -> dict[str, str]:
     db.add(payment)
     db.commit()
 
-    return {"checkout_url": url}
+    return {
+        "checkout_url": url,
+        "checkout_id": checkout_id or None,
+    }
+
+
+def _checkout_belongs_to_user(checkout: dict[str, Any], user: User) -> bool:
+    metadata = checkout.get("metadata") or {}
+    if isinstance(metadata, dict):
+        raw_user_id = metadata.get("user_id")
+        if isinstance(raw_user_id, str) and raw_user_id.isdigit() and int(raw_user_id) == user.id:
+            return True
+
+    external_id = checkout.get("external_customer_id")
+    if isinstance(external_id, str) and external_id.isdigit() and int(external_id) == user.id:
+        return True
+
+    email = checkout.get("customer_email")
+    if isinstance(email, str) and email.strip().lower() == user.email.strip().lower():
+        return True
+    return False
+
+
+def _map_checkout_status(polar_status: str, *, is_premium: bool) -> str:
+    if is_premium:
+        return "paid"
+    normalized = polar_status.strip().lower()
+    if normalized in {"failed", "expired"}:
+        return "failed"
+    if normalized in {"confirmed", "succeeded"}:
+        # Confirmed at Polar but grant not applied yet (or belonging check passed
+        # without an order payload) — still processing from our side.
+        return "created"
+    return "created"
+
+
+def reconcile_checkout(db: Session, user: User, checkout_id: str) -> dict[str, Any]:
+    """Fetch Polar checkout and grant premium if payment already confirmed.
+
+    Recovers international checkouts when the browser returns before the webhook.
+    """
+    if not settings.polar_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="International checkout is not configured yet.",
+        )
+
+    checkout_id = checkout_id.strip()
+    if not checkout_id or not _UUID_RE.match(checkout_id):
+        raise HTTPException(status_code=400, detail="Invalid Polar checkout id")
+
+    checkout = _polar_request("GET", f"/checkouts/{checkout_id}")
+    if not _checkout_belongs_to_user(checkout, user):
+        raise HTTPException(status_code=404, detail="Checkout not found")
+
+    polar_status = str(checkout.get("status") or "open")
+    if polar_status.lower() in {"confirmed", "succeeded"}:
+        order: dict[str, Any] | None = None
+        raw_order = checkout.get("order")
+        if isinstance(raw_order, dict):
+            order = raw_order
+        else:
+            order_id = checkout.get("order_id")
+            if isinstance(order_id, str) and order_id.strip():
+                order = _polar_request("GET", f"/orders/{order_id.strip()}")
+
+        if order is not None:
+            # Ensure metadata can resolve the paying user even if Polar omits it.
+            metadata = order.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata.setdefault("user_id", str(user.id))
+            order["metadata"] = metadata
+            if not order.get("external_customer_id"):
+                order["external_customer_id"] = str(user.id)
+            _apply_paid_order(db, order)
+            db.commit()
+            db.refresh(user)
+        else:
+            sync_premium_flag(user)
+    else:
+        sync_premium_flag(user)
+
+    active = premium_is_active(user)
+    return {
+        "order_id": checkout_id,
+        "status": _map_checkout_status(polar_status, is_premium=active),
+        "is_premium": active,
+        "premium_until": user.premium_until,
+    }
 
 
 def _secret_bytes(secret: str) -> bytes:

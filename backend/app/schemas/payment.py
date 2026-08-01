@@ -33,6 +33,7 @@ class CreateOrderResponse(BaseModel):
 
 class PolarCheckoutResponse(BaseModel):
     checkout_url: str
+    checkout_id: str | None = None
 
 
 class VerifyPaymentRequest(BaseModel):
@@ -42,6 +43,15 @@ class VerifyPaymentRequest(BaseModel):
 
 
 class PaymentStatusResponse(BaseModel):
+    order_id: str
+    status: str
+    is_premium: bool
+    premium_until: datetime | None
+
+
+class PolarCheckoutStatusResponse(BaseModel):
+    """Same shape as Razorpay status — order_id is the Polar checkout id."""
+
     order_id: str
     status: str
     is_premium: bool

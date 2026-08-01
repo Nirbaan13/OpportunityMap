@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.rate_limit import rate_limit_dependency
 from app.database import get_db
 from app.models import User
 from app.schemas.auth import (
@@ -23,6 +24,11 @@ from app.services.auth_service import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_limit_register = rate_limit_dependency(scope="auth-register", limit=5, window_seconds=60)
+_limit_login = rate_limit_dependency(scope="auth-login", limit=10, window_seconds=60)
+_limit_forgot = rate_limit_dependency(scope="auth-forgot", limit=3, window_seconds=60)
+_limit_reset = rate_limit_dependency(scope="auth-reset", limit=10, window_seconds=60)
+
 
 def _to_user_response(user: User) -> UserResponse:
     return UserResponse(
@@ -38,13 +44,21 @@ def _to_user_response(user: User) -> UserResponse:
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> UserResponse:
+def register(
+    payload: RegisterRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(_limit_register),
+) -> UserResponse:
     user = register_user(db, payload.email, payload.password)
     return _to_user_response(user)
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+def login(
+    payload: LoginRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(_limit_login),
+) -> TokenResponse:
     token = authenticate_user(db, payload.email, payload.password)
     return TokenResponse(access_token=token)
 
@@ -56,7 +70,9 @@ def me(current_user: User = Depends(get_current_user)) -> UserResponse:
 
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(
-    payload: ForgotPasswordRequest, db: Session = Depends(get_db)
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(_limit_forgot),
 ) -> MessageResponse:
     request_password_reset(db, payload.email)
     return MessageResponse(
@@ -66,7 +82,9 @@ def forgot_password(
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password_route(
-    payload: ResetPasswordRequest, db: Session = Depends(get_db)
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(_limit_reset),
 ) -> MessageResponse:
     reset_password(db, payload.token, payload.new_password)
     return MessageResponse(message="Password updated. You can now log in.")

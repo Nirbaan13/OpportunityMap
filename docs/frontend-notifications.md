@@ -13,8 +13,8 @@ Website Alerts inbox (no mobile push). Deadline reminders also go to the registe
 
 ## Behaviour
 
-- **3 months / 30 days:** interest matches get inbox + email (daily job).
-- **10 days / 1 day:** only if Remind me is on — inbox + email.
+- **~90 / ~30 days:** interest matches (premium) get inbox + email. Catch-up if the daily job missed the exact day (88–90 and 28–30).
+- **10 days / 1 day:** only if Remind me is on — inbox + email (2–10 day catch-up for the 10-day alert).
 - Guests see “Log in for Remind me”.
 
 ## API

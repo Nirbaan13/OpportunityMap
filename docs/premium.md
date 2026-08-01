@@ -44,6 +44,9 @@ POLAR_API_BASE=https://api.polar.sh/v1
 5. Frontend `/pricing` opens Razorpay for India and Polar for outside India.
    Premium is granted after payment is confirmed; webhooks recover payments if
    the browser closes before verification completes. Polar renewals extend another year.
+   After Polar redirect (`?polar=success&checkout_id=…`), the site polls
+   `GET /payments/polar/status/{checkout_id}` until premium is active — it does
+   **not** show success until grant is confirmed.
 
 ### Local testing without Razorpay
 
@@ -58,6 +61,7 @@ never mounted in production.
 | `GET` | `/payments/config` | public | yearly price, whether Razorpay/Polar is on |
 | `POST` | `/payments/create-order` | JWT | starts Razorpay checkout (INR) |
 | `POST` | `/payments/polar/create-checkout` | JWT | starts Polar international checkout |
+| `GET` | `/payments/polar/status/{checkout_id}` | JWT | reconcile Polar after redirect / delayed webhook |
 | `POST` | `/payments/verify` | JWT | verify Razorpay signature → +365 days |
 | `GET` | `/payments/status/{order_id}` | JWT | reconcile interrupted Razorpay checkout |
 | `POST` | `/payments/webhooks/razorpay` | Razorpay signature | captured/failed/refunded events |

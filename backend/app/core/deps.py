@@ -1,8 +1,9 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.emails import normalize_email
 from app.core.premium import sync_premium_flag
 from app.core.security import decode_access_token
 from app.database import get_db
@@ -34,7 +35,12 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    user = db.scalar(select(User).options(joinedload(User.profile)).where(User.email == email))
+    normalized = normalize_email(email)
+    user = db.scalar(
+        select(User)
+        .options(joinedload(User.profile))
+        .where(func.lower(User.email) == normalized)
+    )
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

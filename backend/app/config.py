@@ -106,6 +106,13 @@ class Settings(BaseSettings):
                 raise ValueError(
                     "RAZORPAY_WEBHOOK_SECRET is required when Razorpay is enabled in production"
                 )
+            polar_configured = bool(
+                self.polar_access_token.strip() and self.polar_product_id.strip()
+            )
+            if polar_configured and not self.polar_webhook_secret.strip():
+                raise ValueError(
+                    "POLAR_WEBHOOK_SECRET is required when Polar is enabled in production"
+                )
         return self
 
     @property

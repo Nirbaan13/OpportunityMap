@@ -4,12 +4,14 @@ Website **Alerts** inbox **and** email to the student's **registered account ema
 
 ## Reminder schedule
 
-| When | Who receives it |
-|------|-----------------|
-| **~3 months** (90 days) before deadline | Students with **overlapping interests** (and grade/country eligibility) |
-| **30 days** before | Same interest-overlap audience |
-| **10 days** before | Only students who turned on **Remind me** for that opportunity |
-| **1 day** before | Only students who turned on **Remind me** |
+Premium members only. Matching uses UTC calendar days until `deadline_at`.
+
+| When | Who receives it | Catch-up |
+|------|-----------------|----------|
+| **~3 months** (90-day bucket) | Students with **overlapping interests** (grade + country eligibility) | Days **88–90** (one alert; deduped as 90) |
+| **30 days** bucket | Same interest-overlap audience | Days **28–30** (deduped as 30) |
+| **10 days** bucket | **Remind me** opted in | Days **2–10** (deduped as 10) |
+| **1 day** | **Remind me** opted in | Exact day 1 |
 
 Each new reminder is written to `notifications` **and** emailed to `users.email` when SMTP is configured.
 

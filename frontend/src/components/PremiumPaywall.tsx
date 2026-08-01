@@ -181,15 +181,62 @@ export function PremiumPaywall({
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("polar") !== "success" || !token) return;
+    const checkoutId = params.get("checkout_id");
+    let cancelled = false;
     void (async () => {
       setStage("recovering");
+      setError(null);
       try {
-        await refreshUser();
-        setStage("success");
-      } catch {
+        let unlocked = false;
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          if (cancelled) return;
+          if (checkoutId) {
+            try {
+              const result = await api.polarCheckoutStatus(token, checkoutId);
+              if (result.status === "paid" && result.is_premium) {
+                await refreshUser();
+                unlocked = true;
+                break;
+              }
+              if (result.status === "failed" || result.status === "refunded") {
+                break;
+              }
+            } catch (reconcileError) {
+              if (reconcileError instanceof ApiError && reconcileError.status === 401) {
+                throw reconcileError;
+              }
+            }
+          }
+          const me = await refreshUser();
+          if (me?.is_premium) {
+            unlocked = true;
+            break;
+          }
+          await sleep(1500);
+        }
+        if (cancelled) return;
+        if (unlocked) {
+          setStage("success");
+          window.history.replaceState({}, "", "/pricing");
+        } else {
+          setStage("idle");
+          setError(
+            "Payment is still confirming. Wait a moment and refresh — premium unlocks once Polar finishes.",
+          );
+        }
+      } catch (err) {
+        if (cancelled) return;
         setStage("idle");
+        setError(
+          err instanceof ApiError || err instanceof Error
+            ? err.message
+            : "Could not confirm Polar payment. Try refreshing.",
+        );
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [refreshUser, token]);
 
   const orderStorageKey = user ? `${ORDER_STORAGE_PREFIX}${user.id}` : null;

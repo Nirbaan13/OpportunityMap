@@ -29,6 +29,9 @@ Response `201`:
 
 Password must be at least 8 characters.
 
+Emails are stored **lowercase**. Login and password-reset match case-insensitively
+and heal legacy mixed-case rows on successful login.
+
 ### Login
 
 `POST /api/v1/auth/login`
@@ -57,12 +60,25 @@ Header: `Authorization: Bearer <jwt>`
 
 Response `200`: same shape as register response.
 
+## Rate limits (per client IP, per minute)
+
+| Endpoint | Limit |
+|----------|-------|
+| `POST /register` | 5 |
+| `POST /login` | 10 |
+| `POST /forgot-password` | 3 |
+| `POST /reset-password` | 10 |
+| `GET /admin/overview` | 30 |
+
+Exceeded → `429 Too many requests`.
+
 ## Errors
 
 | Status | When |
 |--------|------|
 | 401 | Wrong password, invalid token, or not logged in |
 | 409 | Email already registered |
+| 429 | Rate limit exceeded |
 
 ## Frontend usage (Phase 7)
 
