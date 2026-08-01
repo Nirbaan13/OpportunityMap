@@ -51,13 +51,7 @@ export function OpportunityRow({
     opportunity.grade_eligibility,
   );
   const displayFields = sharedFields ?? opportunity.fields;
-  const showActions =
-    showBookmark ||
-    onBookmarkChange ||
-    showRemindMe ||
-    onRemindMeChange ||
-    showDone ||
-    onDoneChange;
+  const showActions = showBookmark || showRemindMe || showDone;
 
   return (
     <article className="rounded-lg border border-line bg-paper/70 px-3 py-4 sm:border-0 sm:border-b sm:bg-transparent sm:px-0 sm:py-6 sm:first:pt-0 sm:last:border-b-0">
@@ -130,25 +124,25 @@ export function OpportunityRow({
           >
             Apply / source
           </a>
-          {showBookmark || onBookmarkChange ? (
+          {showRemindMe ? (
+            <RemindMeButton
+              opportunityId={opportunity.id}
+              remindMe={remindMe}
+              onChange={onRemindMeChange}
+            />
+          ) : null}
+          {showBookmark ? (
             <BookmarkButton
               opportunityId={opportunity.id}
               bookmarked={bookmarked}
               onChange={onBookmarkChange}
             />
           ) : null}
-          {showDone || onDoneChange ? (
+          {showDone ? (
             <MarkDoneButton
               opportunityId={opportunity.id}
               done={done}
               onChange={onDoneChange}
-            />
-          ) : null}
-          {showRemindMe || onRemindMeChange ? (
-            <RemindMeButton
-              opportunityId={opportunity.id}
-              remindMe={remindMe}
-              onChange={onRemindMeChange}
             />
           ) : null}
         </div>
@@ -171,7 +165,15 @@ export function OpportunityRow({
         </Link>
         {showActions ? (
           <>
-            {showBookmark || onBookmarkChange ? (
+            {showRemindMe ? (
+              <RemindMeButton
+                opportunityId={opportunity.id}
+                remindMe={remindMe}
+                onChange={onRemindMeChange}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line px-3 text-sm"
+              />
+            ) : null}
+            {showBookmark ? (
               <BookmarkButton
                 opportunityId={opportunity.id}
                 bookmarked={bookmarked}
@@ -179,20 +181,12 @@ export function OpportunityRow({
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
               />
             ) : null}
-            {showDone || onDoneChange ? (
+            {showDone ? (
               <MarkDoneButton
                 opportunityId={opportunity.id}
                 done={done}
                 onChange={onDoneChange}
                 className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
-              />
-            ) : null}
-            {showRemindMe || onRemindMeChange ? (
-              <RemindMeButton
-                opportunityId={opportunity.id}
-                remindMe={remindMe}
-                onChange={onRemindMeChange}
-                className="inline-flex min-h-10 w-full items-center justify-center rounded-md border border-line px-3 text-sm"
               />
             ) : null}
           </>

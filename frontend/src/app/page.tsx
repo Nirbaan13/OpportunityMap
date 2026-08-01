@@ -38,8 +38,9 @@ export default function Home() {
           Find olympiads, hackathons, and research programs you can actually apply to.
         </h1>
         <p className="animate-rise-delay-2 mt-3 max-w-xl text-sm leading-relaxed text-ink-soft sm:mt-4 sm:text-lg">
-          Browse opportunities for free and build your student profile. Get personalized
-          matches and deadline alerts to your email.
+          Browse free, build a student profile, and turn on Remind me for a website alert
+          about a month before deadlines. Premium adds personalized matches, Saved, and
+          email reminders.
         </p>
         <div className="animate-rise-delay-2 mt-8 flex w-full flex-col gap-3 sm:mt-10 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <Link
@@ -49,10 +50,10 @@ export default function Home() {
             Browse opportunities
           </Link>
           <Link
-            href="/roadmap"
+            href="/register"
             className="inline-flex min-h-12 items-center justify-center rounded-md border border-ink/20 bg-transparent px-5 py-3 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:min-h-0"
           >
-            View roadmap
+            Create free account
           </Link>
         </div>
       </section>

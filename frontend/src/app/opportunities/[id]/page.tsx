@@ -210,30 +210,6 @@ export default function OpportunityDetailPage() {
           >
             Source page
           </a>
-          <BookmarkButton
-            opportunityId={opportunity.id}
-            bookmarked={bookmarked}
-            onChange={(next) => {
-              setBookmarked(next);
-              if (!next) {
-                setRemindMe(false);
-                setDone(false);
-              }
-            }}
-            className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
-          />
-          <MarkDoneButton
-            opportunityId={opportunity.id}
-            done={done}
-            onChange={(next) => {
-              setDone(next);
-              if (next) {
-                setBookmarked(true);
-                setRemindMe(false);
-              }
-            }}
-            className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
-          />
           <RemindMeButton
             opportunityId={opportunity.id}
             remindMe={remindMe}
@@ -243,11 +219,39 @@ export default function OpportunityDetailPage() {
             }}
             className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
           />
+          {user?.is_premium ? (
+            <>
+              <BookmarkButton
+                opportunityId={opportunity.id}
+                bookmarked={bookmarked}
+                onChange={(next) => {
+                  setBookmarked(next);
+                  if (!next) {
+                    setRemindMe(false);
+                    setDone(false);
+                  }
+                }}
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
+              />
+              <MarkDoneButton
+                opportunityId={opportunity.id}
+                done={done}
+                onChange={(next) => {
+                  setDone(next);
+                  if (next) {
+                    setBookmarked(true);
+                    setRemindMe(false);
+                  }
+                }}
+                className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
+              />
+            </>
+          ) : null}
         </div>
         <p className="mt-3 hidden text-xs text-ink-soft sm:block">
-          Mark done counts this opportunity toward your profile field progress. Free Remind
-          me posts a website alert about a month before the deadline. Premium adds email
-          plus 10-day and 1-day reminders.
+          {user?.is_premium
+            ? "Mark done counts toward profile field progress. Remind me emails you and posts a website alert 10 days and 1 day before the deadline."
+            : "Free Remind me posts a website alert about a month before the deadline. Premium adds Saved, email, and last-week reminders."}
         </p>
       </div>
 
@@ -263,30 +267,6 @@ export default function OpportunityDetailPage() {
           >
             Apply
           </a>
-          <BookmarkButton
-            opportunityId={opportunity.id}
-            bookmarked={bookmarked}
-            onChange={(next) => {
-              setBookmarked(next);
-              if (!next) {
-                setRemindMe(false);
-                setDone(false);
-              }
-            }}
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
-          />
-          <MarkDoneButton
-            opportunityId={opportunity.id}
-            done={done}
-            onChange={(next) => {
-              setDone(next);
-              if (next) {
-                setBookmarked(true);
-                setRemindMe(false);
-              }
-            }}
-            className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
-          />
           <RemindMeButton
             opportunityId={opportunity.id}
             remindMe={remindMe}
@@ -296,6 +276,34 @@ export default function OpportunityDetailPage() {
             }}
             className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-line px-3 text-sm"
           />
+          {user?.is_premium ? (
+            <>
+              <BookmarkButton
+                opportunityId={opportunity.id}
+                bookmarked={bookmarked}
+                onChange={(next) => {
+                  setBookmarked(next);
+                  if (!next) {
+                    setRemindMe(false);
+                    setDone(false);
+                  }
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
+              />
+              <MarkDoneButton
+                opportunityId={opportunity.id}
+                done={done}
+                onChange={(next) => {
+                  setDone(next);
+                  if (next) {
+                    setBookmarked(true);
+                    setRemindMe(false);
+                  }
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-line px-3 text-sm"
+              />
+            </>
+          ) : null}
         </div>
       </div>
     </main>
