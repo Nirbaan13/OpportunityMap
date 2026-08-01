@@ -10,18 +10,17 @@ Students create a profile with their grade, country, interests, and experience. 
 ┌─────────────────┐     HTTPS/JSON      ┌─────────────────┐
 │   Frontend      │ ──────────────────► │    Backend      │
 │   (Next.js)     │ ◄────────────────── │   (FastAPI)     │
-│   Vercel        │                     │  Railway/Render │
+│   Vercel        │                     │   Vercel        │
 └─────────────────┘                     └────────┬────────┘
                                                  │
                                                  ▼
                                         ┌─────────────────┐
-                                        │   PostgreSQL    │
+                                        │ Neon PostgreSQL │
                                         └────────▲────────┘
                                                  │
                                         ┌────────┴────────┐
                                         │    Scraper      │
-                                        │  (Playwright)   │
-                                        │  Cron / Actions │
+                                        │ GitHub Actions  │
                                         └─────────────────┘
 ```
 
@@ -29,13 +28,14 @@ Students create a profile with their grade, country, interests, and experience. 
 |-------|------------|-----|
 | Frontend | React + Next.js (App Router) | Modern React framework with routing, SSR, and easy Vercel deployment |
 | Backend | Python FastAPI | Fast to build, auto-generated API docs, strong typing with Pydantic |
-| Database | PostgreSQL | Reliable relational DB for structured opportunity and user data |
+| Database | Neon PostgreSQL | Managed Postgres with serverless-friendly scaling |
 | ORM | SQLAlchemy 2.0 + Alembic | Industry-standard Python ORM with version-controlled migrations |
 | Scraper | Playwright + BeautifulSoup | Handles both static HTML and JavaScript-rendered pages |
-| Styling | Tailwind CSS | Utility-first CSS for rapid UI development |
+| Styling | Tailwind CSS | Utility-first CSS for rapid UI design |
 | Version control | GitHub | Standard for team collaboration and CI/CD |
 | Frontend hosting | Vercel | Zero-config Next.js deployment |
-| Backend hosting | Railway or Render | Simple Python deployment with managed Postgres |
+| Backend hosting | Vercel (serverless FastAPI) | Same platform as the site; short cold starts |
+| Jobs | GitHub Actions | Scrapes, deadline reminders, migrations |
 
 ## Repository Structure
 

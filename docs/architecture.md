@@ -11,8 +11,9 @@ OpportunityMap is a monorepo with three independent services:
 | Service | Role | Deployment |
 |---------|------|------------|
 | Frontend | User-facing web app | Vercel |
-| Backend | REST API, business logic | Railway / Render |
-| Scraper | Collects opportunities from external sites | Cron job / GitHub Actions |
+| Backend | REST API, business logic | Vercel (serverless FastAPI) |
+| Database | Shared Postgres | Neon |
+| Scraper | Collects opportunities from external sites | GitHub Actions (weekly + manual) |
 
 All services share a PostgreSQL database.
 

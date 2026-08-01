@@ -32,6 +32,9 @@ class User(Base):
     auto_renew: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
     )
+    last_login_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

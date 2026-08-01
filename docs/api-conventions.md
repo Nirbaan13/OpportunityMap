@@ -5,13 +5,13 @@
 ## Base URL
 
 - Local: `http://localhost:8000`
-- Production: TBD (Railway / Render)
+- Production: Vercel API project (e.g. `https://opportunitymap-api.vercel.app`)
 
 ## Versioning
 
 All endpoints are prefixed with `/api/v1/`.
 
-Example: `GET /api/v1/health`
+Example: `GET /api/v1/health` (liveness) · `GET /api/v1/health/ready` (DB + integration flags)
 
 ## Request Format
 

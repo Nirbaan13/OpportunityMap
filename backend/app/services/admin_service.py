@@ -37,6 +37,22 @@ def build_admin_overview(db: Session) -> dict:
     signups_30 = (
         db.scalar(select(func.count()).select_from(User).where(User.created_at >= month_ago)) or 0
     )
+    logins_7 = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.last_login_at.is_not(None), User.last_login_at >= week_ago)
+        )
+        or 0
+    )
+    logins_30 = (
+        db.scalar(
+            select(func.count())
+            .select_from(User)
+            .where(User.last_login_at.is_not(None), User.last_login_at >= month_ago)
+        )
+        or 0
+    )
 
     opportunities_total = db.scalar(select(func.count()).select_from(Opportunity)) or 0
     opportunities_active = (
@@ -115,6 +131,8 @@ def build_admin_overview(db: Session) -> dict:
             "users_with_profile": users_with_profile,
             "signups_last_7_days": signups_7,
             "signups_last_30_days": signups_30,
+            "logins_last_7_days": logins_7,
+            "logins_last_30_days": logins_30,
             "opportunities_active": opportunities_active,
             "opportunities_total": opportunities_total,
             "payments_paid": payments_paid,
@@ -136,6 +154,7 @@ def build_admin_overview(db: Session) -> dict:
                 "premium_until": user.premium_until,
                 "has_profile": user.profile is not None,
                 "created_at": user.created_at,
+                "last_login_at": user.last_login_at,
             }
             for user in recent_users
         ],

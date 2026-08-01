@@ -60,7 +60,8 @@ def authenticate_user(db: Session, email: str, password: str) -> str:
     # Heal mixed-case legacy emails so JWT subject stays stable.
     if user.email != email:
         user.email = email
-        db.commit()
+    user.last_login_at = datetime.now(UTC)
+    db.commit()
 
     return create_access_token(user.email)
 

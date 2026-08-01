@@ -25,4 +25,44 @@ router.include_router(payments_router)
 
 @router.get("/health")
 def health_check() -> dict[str, str]:
+    """Liveness — process is up (no dependency checks)."""
     return {"status": "ok"}
+
+
+@router.get("/health/ready")
+def readiness_check() -> dict:
+    """Readiness — database reachable + which optional integrations are configured.
+
+    Returns 503 when the database cannot be reached. Never exposes secret values.
+    """
+    from fastapi import HTTPException, status
+    from sqlalchemy import text
+
+    from app.config import settings
+    from app.database import SessionLocal
+
+    database = "error"
+    try:
+        db = SessionLocal()
+        try:
+            db.execute(text("SELECT 1"))
+            database = "ok"
+        finally:
+            db.close()
+    except Exception:
+        database = "error"
+
+    payload = {
+        "status": "ok" if database == "ok" else "degraded",
+        "database": database,
+        "razorpay_configured": settings.razorpay_enabled,
+        "polar_configured": settings.polar_enabled,
+        "email_configured": settings.email_enabled,
+        "admin_configured": bool(settings.admin_password.strip()),
+    }
+    if database != "ok":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=payload,
+        )
+    return payload

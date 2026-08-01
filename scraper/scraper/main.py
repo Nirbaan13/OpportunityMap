@@ -314,7 +314,18 @@ def main() -> None:
         db.close()
 
     if soft_failures:
-        print(f"\nSoft-failed sources (non-fatal): {', '.join(soft_failures)}")
+        joined = ", ".join(soft_failures)
+        print(f"\nSoft-failed sources (non-fatal): {joined}")
+        # GitHub Actions annotations surface in the workflow UI without failing the job.
+        for source in soft_failures:
+            print(
+                f"::warning title=Scraper soft-fail::"
+                f"{source} failed on this run; catalog seed/maintenance continued."
+            )
+        print(
+            "::notice title=Scraper soft-fail summary::"
+            f"{len(soft_failures)} live source(s) soft-failed: {joined}"
+        )
     if failures:
         print(f"\nCompleted with failures: {', '.join(failures)}")
         sys.exit(1)

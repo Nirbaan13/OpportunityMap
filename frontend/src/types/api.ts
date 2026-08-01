@@ -191,6 +191,8 @@ export type AdminTotals = {
   users_with_profile: number;
   signups_last_7_days: number;
   signups_last_30_days: number;
+  logins_last_7_days: number;
+  logins_last_30_days: number;
   opportunities_active: number;
   opportunities_total: number;
   payments_paid: number;
@@ -212,6 +214,7 @@ export type AdminUserRow = {
   premium_until: string | null;
   has_profile: boolean;
   created_at: string;
+  last_login_at: string | null;
 };
 
 export type AdminPaymentRow = {

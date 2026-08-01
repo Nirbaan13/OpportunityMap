@@ -2,7 +2,7 @@
 
 **Goal:** $0 hosting (optional paid domain). Frontend on Vercel never “sleeps.”  
 API also runs on **Vercel** (serverless FastAPI) + **Neon** Postgres.  
-Scrapers every 2–3 days via **GitHub Actions** (free).
+Scrapers run **weekly** via **GitHub Actions** (soft-fail live sources; warnings in the Actions UI).
 
 | Piece | Service | Sleep? |
 |-------|---------|--------|
@@ -139,11 +139,11 @@ Redeploy the **API** project.
 3. Open `https://YOUR-SITE/admin`, enter that password.
 4. Bookmark the page — it is not in the public navigation.
 
-This shows user counts, premium members, recent signups, and payments from your Neon database. Site visit analytics still come from Vercel Analytics / Google Analytics if you enable those separately.
+This shows user counts, premium members, recent signups, **returning logins** (`last_login_at`), and payments from your Neon database. Site visit analytics still come from Vercel Analytics / Google Analytics if you enable those separately.
 
 ---
 
-## Part 6 — Scrapers (every 2–3 days)
+## Part 6 — Scrapers (weekly by default)
 
 GitHub → **Settings** → **Secrets** (same as migrate):
 
@@ -154,13 +154,15 @@ GitHub → **Settings** → **Secrets** (same as migrate):
 | `FRONTEND_URL` | frontend Vercel URL |
 | SMTP_* | optional (email reminders) |
 
-Edit `.github/workflows/scrape-opportunities.yml` cron if you want every 2–3 days, e.g.:
+Default schedule in `.github/workflows/scrape-opportunities.yml` is **weekly** (Sunday 01:00 UTC). Live network scrapers soft-fail on `--source all` so catalog maintenance still runs; GitHub Actions shows **warnings** when a live source fails. Edit the cron if you want more often, e.g.:
 
 ```yaml
 - cron: "0 1 */3 * *"   # every 3 days at 01:00 UTC
 ```
 
 **Actions** → **Scrape opportunities** → **Run workflow** once to fill data.
+
+After changing models, run **Database migrations** (or push an alembic change) so `last_login_at` and other columns exist.
 
 ---
 
@@ -176,6 +178,7 @@ Point DNS as Vercel instructs. Free SSL included.
 - [ ] Neon project created  
 - [ ] Migrations ran (`Database migrations` workflow)  
 - [ ] API `/api/v1/health` OK on Vercel  
+- [ ] API `/api/v1/health/ready` shows `database: ok`  
 - [ ] Frontend loads and can call API  
 - [ ] Scrape workflow ran once  
 - [ ] CORS updated to frontend URL  

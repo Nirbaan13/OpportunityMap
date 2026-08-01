@@ -10,6 +10,8 @@ class AdminTotals(BaseModel):
     users_with_profile: int
     signups_last_7_days: int
     signups_last_30_days: int
+    logins_last_7_days: int = 0
+    logins_last_30_days: int = 0
     opportunities_active: int
     opportunities_total: int
     payments_paid: int
@@ -31,6 +33,7 @@ class AdminUserRow(BaseModel):
     premium_until: datetime | None
     has_profile: bool
     created_at: datetime
+    last_login_at: datetime | None = None
 
 
 class AdminPaymentRow(BaseModel):

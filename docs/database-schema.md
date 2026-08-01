@@ -74,9 +74,12 @@ Login accounts. One user has at most one profile.
 
 | Column | Type | Notes |
 |--------|------|-------|
-| `email` | string | Unique, used for login (Phase 2) |
+| `email` | string | Unique, used for login (Phase 2); stored lowercase |
 | `password_hash` | string | Bcrypt hash (Phase 2) |
 | `is_active` | bool | Soft-disable accounts |
+| `is_premium` / `premium_until` | bool / timestamptz | Yearly membership |
+| `auto_renew` | bool | Soft renewal reminder preference |
+| `last_login_at` | timestamptz | Updated on successful login (returning-user metric) |
 
 ### `profiles`
 Student data used for matching. Collected via the profile form (Phase 3).

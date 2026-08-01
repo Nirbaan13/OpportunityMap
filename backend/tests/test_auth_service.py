@@ -53,6 +53,7 @@ def test_authenticate_accepts_mixed_case_and_heals(monkeypatch: pytest.MonkeyPat
         email="Student@Example.COM",
         password_hash="hashed",
         is_active=True,
+        last_login_at=None,
     )
     db = MagicMock()
     db.scalar.return_value = stored
@@ -67,5 +68,6 @@ def test_authenticate_accepts_mixed_case_and_heals(monkeypatch: pytest.MonkeyPat
 
     token = authenticate_user(db, "student@example.com", "password123")
     assert stored.email == "student@example.com"
+    assert stored.last_login_at is not None
     assert token == "token-for-student@example.com"
     db.commit.assert_called()

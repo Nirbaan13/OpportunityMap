@@ -164,6 +164,8 @@ export default function AdminPage() {
                     ["With profile", data.totals.users_with_profile],
                     ["Signups (7d)", data.totals.signups_last_7_days],
                     ["Signups (30d)", data.totals.signups_last_30_days],
+                    ["Logins (7d)", data.totals.logins_last_7_days],
+                    ["Logins (30d)", data.totals.logins_last_30_days],
                     ["Paid payments", data.totals.payments_paid],
                     ["INR paid", `₹${data.totals.paid_amount_inr.toFixed(2)}`],
                     ["USD paid", `$${data.totals.paid_amount_usd.toFixed(2)}`],
@@ -218,13 +220,14 @@ export default function AdminPage() {
                 <section>
                   <h2 className="font-display text-lg font-semibold text-ink">Recent users</h2>
                   <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[640px] text-left text-sm">
+                    <table className="w-full min-w-[720px] text-left text-sm">
                       <thead className="border-b border-line text-xs uppercase tracking-[0.12em] text-ink-soft">
                         <tr>
                           <th className="py-2 pr-3 font-medium">Email</th>
                           <th className="py-2 pr-3 font-medium">Premium</th>
                           <th className="py-2 pr-3 font-medium">Profile</th>
-                          <th className="py-2 font-medium">Joined</th>
+                          <th className="py-2 pr-3 font-medium">Joined</th>
+                          <th className="py-2 font-medium">Last login</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -237,7 +240,8 @@ export default function AdminPage() {
                             <td className="py-2.5 pr-3 text-ink-soft">
                               {user.has_profile ? "Yes" : "No"}
                             </td>
-                            <td className="py-2.5 text-ink-soft">{formatWhen(user.created_at)}</td>
+                            <td className="py-2.5 pr-3 text-ink-soft">{formatWhen(user.created_at)}</td>
+                            <td className="py-2.5 text-ink-soft">{formatWhen(user.last_login_at)}</td>
                           </tr>
                         ))}
                       </tbody>
