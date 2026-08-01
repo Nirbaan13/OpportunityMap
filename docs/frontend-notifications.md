@@ -7,7 +7,8 @@ Website Alerts inbox (no mobile push). Deadline reminders also go to the registe
 | Path / control | Purpose |
 |----------------|---------|
 | `/notifications` | Inbox list, mark read / mark all |
-| Header **Alerts** | Nav + unread count badge |
+| Header **Alerts** | Nav + unread count badge (desktop) |
+| Mobile bottom **Alerts** | Premium tab + unread badge |
 | **Remind me** | Opt in to 10-day and 1-day reminders (inbox + email) |
 | Opportunity detail / feed / Saved | Remind me next to Save |
 

@@ -248,7 +248,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
         </nav>
       ) : (
         <div className="py-2 px-1 text-sm text-ink-soft">
-          Use the tabs below to move between Browse, Saved, and Alerts.
+          Use the tabs below for Browse, Roadmap, Saved, Alerts, and Profile.
         </div>
       )}
     </>
