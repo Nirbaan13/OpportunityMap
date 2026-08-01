@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 CATALOG_SOURCES = (
     "field_coverage_catalog",
     "expanded_catalog",
+    "solid_programs_catalog",
     "global_competitions",
 )
 
