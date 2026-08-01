@@ -98,7 +98,7 @@ export default function OpportunitiesPage() {
   }, [canUseMatches, mode]);
 
   useEffect(() => {
-    if (authLoading || !token || !user?.is_premium) {
+    if (authLoading || !token || !user) {
       setBookmarkedIds(new Set());
       setRemindMeIds(new Set());
       setDoneIds(new Set());
@@ -107,21 +107,29 @@ export default function OpportunitiesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const data = await api.listBookmarks(token, { page: 1, page_size: 100 });
-        if (cancelled) return;
-        setBookmarkedIds(new Set(data.items.map((item) => item.opportunity.id)));
-        setRemindMeIds(
-          new Set(
-            data.items.filter((item) => item.remind_me).map((item) => item.opportunity.id),
-          ),
-        );
-        setDoneIds(
-          new Set(
-            data.items
-              .filter((item) => item.status === "completed")
-              .map((item) => item.opportunity.id),
-          ),
-        );
+        if (user.is_premium) {
+          const data = await api.listBookmarks(token, { page: 1, page_size: 100 });
+          if (cancelled) return;
+          setBookmarkedIds(new Set(data.items.map((item) => item.opportunity.id)));
+          setRemindMeIds(
+            new Set(
+              data.items.filter((item) => item.remind_me).map((item) => item.opportunity.id),
+            ),
+          );
+          setDoneIds(
+            new Set(
+              data.items
+                .filter((item) => item.status === "completed")
+                .map((item) => item.opportunity.id),
+            ),
+          );
+        } else {
+          const data = await api.listRemindMeIds(token);
+          if (cancelled) return;
+          setBookmarkedIds(new Set());
+          setDoneIds(new Set());
+          setRemindMeIds(new Set(data.opportunity_ids));
+        }
       } catch {
         if (!cancelled) {
           setBookmarkedIds(new Set());
@@ -163,7 +171,7 @@ export default function OpportunitiesPage() {
       else next.delete(opportunityId);
       return next;
     });
-    if (remindMe) {
+    if (remindMe && user?.is_premium) {
       setBookmarkedIds((prev) => new Set(prev).add(opportunityId));
     }
   }

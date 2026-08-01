@@ -38,7 +38,7 @@ export function SiteHeader() {
   }, [mobileOpen]);
 
   useEffect(() => {
-    if (!user || !token || !user.is_premium) {
+    if (!user || !token) {
       setUnread(0);
       return;
     }
@@ -111,19 +111,6 @@ export function SiteHeader() {
                   >
                     Saved
                   </Link>
-                  <Link
-                    href="/notifications"
-                    className={`inline-flex min-h-10 items-center transition hover:text-accent ${
-                      pathname.startsWith("/notifications") ? "text-accent" : "text-ink-soft"
-                    }`}
-                  >
-                    Alerts
-                    {unread > 0 ? (
-                      <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-md bg-warm/20 px-1.5 text-xs font-semibold text-warm">
-                        {unread > 99 ? "99+" : unread}
-                      </span>
-                    ) : null}
-                  </Link>
                 </>
               ) : (
                 <Link
@@ -135,6 +122,19 @@ export function SiteHeader() {
                   View roadmap
                 </Link>
               )}
+              <Link
+                href="/notifications"
+                className={`inline-flex min-h-10 items-center transition hover:text-accent ${
+                  pathname.startsWith("/notifications") ? "text-accent" : "text-ink-soft"
+                }`}
+              >
+                Alerts
+                {unread > 0 ? (
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-md bg-warm/20 px-1.5 text-xs font-semibold text-warm">
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+              </Link>
             </>
           ) : (
             <>

@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.v1.opportunities import _to_summary
-from app.core.deps import require_premium
+from app.core.deps import get_current_user
 from app.database import get_db
 from app.models import Notification, Opportunity, User
 from app.schemas.notification import (
@@ -48,7 +48,7 @@ def list_my_notifications(
     unread_only: bool = Query(default=False),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
-    current_user: User = Depends(require_premium),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> NotificationListResponse:
     filters = [Notification.user_id == current_user.id]
@@ -96,7 +96,7 @@ def list_my_notifications(
 
 @router.get("/unread-count", response_model=UnreadCountResponse)
 def unread_count(
-    current_user: User = Depends(require_premium),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UnreadCountResponse:
     count = (
@@ -116,7 +116,7 @@ def unread_count(
 @router.post("/{notification_id}/read", response_model=NotificationItem)
 def mark_read(
     notification_id: int,
-    current_user: User = Depends(require_premium),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> NotificationItem:
     notification = db.scalar(
@@ -138,7 +138,7 @@ def mark_read(
 
 @router.post("/read-all", response_model=UnreadCountResponse)
 def mark_all_read(
-    current_user: User = Depends(require_premium),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UnreadCountResponse:
     rows = list(

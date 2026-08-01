@@ -14,7 +14,7 @@ type RemindMeButtonProps = {
   className?: string;
 };
 
-/** Opt in to 10-day and 1-day website deadline reminders for this opportunity. */
+/** Opt in to deadline reminders. Free: ~30-day inbox. Premium: 10/1 + email. */
 export function RemindMeButton({
   opportunityId,
   remindMe,
@@ -30,24 +30,17 @@ export function RemindMeButton({
       <Link
         href="/login"
         className={`inline-flex min-h-11 items-center text-sm font-medium text-ink-soft transition hover:text-accent ${className}`}
-        title="Log in to get 10-day and 1-day deadline reminders"
+        title="Log in to get a website reminder about a month before the deadline"
       >
         Log in for Remind me
       </Link>
     );
   }
 
-  if (!user.is_premium) {
-    return (
-      <Link
-        href="/pricing"
-        className={`inline-flex min-h-11 items-center text-sm font-medium text-warm transition hover:text-accent ${className}`}
-        title="Premium unlocks Remind me, recommendations, and alerts"
-      >
-        Unlock Remind me
-      </Link>
-    );
-  }
+  const isPremium = Boolean(user.is_premium);
+  const tip = isPremium
+    ? "Get email + website reminders 10 days and 1 day before the deadline"
+    : "Free: website inbox alert about a month before the deadline (no email). Premium adds email and 10/1-day alerts.";
 
   async function toggle() {
     if (pending) return;
@@ -75,10 +68,15 @@ export function RemindMeButton({
           remindMe ? "text-accent hover:text-ink" : "text-ink-soft hover:text-accent"
         } ${className}`}
         aria-pressed={remindMe}
-        title="Get email + website reminders 10 days and 1 day before the deadline"
+        title={tip}
       >
         {pending ? "Updating…" : remindMe ? "Remind me on" : "Remind me"}
       </button>
+      {!isPremium && remindMe ? (
+        <p className="mt-1 max-w-[14rem] text-xs text-ink-soft sm:text-right">
+          Inbox ~1 month before · upgrade for email + last-week alerts
+        </p>
+      ) : null}
       {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
     </span>
   );

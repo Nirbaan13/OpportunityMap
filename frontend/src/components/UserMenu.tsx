@@ -114,6 +114,18 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
             next.completedActivities = profile.completed_opportunities?.length
               ?? profile.completed_activities.length;
           }
+        } else {
+          const [remindIds, unread, profile] = await Promise.all([
+            api.listRemindMeIds(token).catch(() => null),
+            api.unreadNotificationCount(token).catch(() => null),
+            user.has_profile ? api.getProfile(token).catch(() => null) : Promise.resolve(null),
+          ]);
+          if (remindIds) next.reminders = remindIds.opportunity_ids.length;
+          if (unread) next.unread = unread.unread_count;
+          if (profile) {
+            next.profileReady = true;
+            next.fullName = profile.full_name;
+          }
         }
       } finally {
         if (!cancelled) {
@@ -197,16 +209,28 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
       ) : (
         <div className="border-b border-line px-1 py-3 sm:px-4">
           <p className="text-sm text-ink-soft">
-            See the premium roadmap for saved opportunities, reminders, and matches.
+            Free Remind me sends a website alert about a month before deadlines. Premium
+            adds email, Saved, matches, and last-week reminders.
           </p>
-          <Link
-            href="/roadmap"
-            role="menuitem"
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11 sm:w-auto"
-            onClick={() => setOpen(false)}
-          >
-            View roadmap
-          </Link>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/notifications"
+              role="menuitem"
+              className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-4 text-sm font-semibold text-ink transition hover:border-accent hover:text-accent sm:min-h-11"
+              onClick={() => setOpen(false)}
+            >
+              Alerts
+              {stats.unread > 0 ? ` (${stats.unread})` : ""}
+            </Link>
+            <Link
+              href="/roadmap"
+              role="menuitem"
+              className="inline-flex min-h-12 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-paper transition hover:bg-ink-soft sm:min-h-11"
+              onClick={() => setOpen(false)}
+            >
+              View roadmap
+            </Link>
+          </div>
         </div>
       )}
 
@@ -215,40 +239,36 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
           <MenuLink href="/opportunities" active={pathname.startsWith("/opportunities")}>
             Opportunities
           </MenuLink>
+          <MenuLink href="/profile" active={pathname === "/profile"}>
+            Profile
+          </MenuLink>
+          <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
+            {isPremium ? "Roadmap" : "View roadmap"}
+          </MenuLink>
           {isPremium ? (
-            <>
-              <MenuLink href="/profile" active={pathname === "/profile"}>
-                Profile
-              </MenuLink>
-              <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
-                Roadmap
-              </MenuLink>
-              <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
-                Saved
-                {stats.saved > 0 ? (
-                  <span className="ml-auto text-xs tabular-nums text-ink-soft">
-                    {stats.saved}
-                  </span>
-                ) : null}
-              </MenuLink>
-              <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
-                Alerts
-                {stats.unread > 0 ? (
-                  <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
-                    {stats.unread > 99 ? "99+" : stats.unread}
-                  </span>
-                ) : null}
-              </MenuLink>
-            </>
-          ) : (
-            <MenuLink href="/roadmap" active={pathname.startsWith("/roadmap")}>
-              View roadmap
+            <MenuLink href="/bookmarks" active={pathname.startsWith("/bookmarks")}>
+              Saved
+              {stats.saved > 0 ? (
+                <span className="ml-auto text-xs tabular-nums text-ink-soft">
+                  {stats.saved}
+                </span>
+              ) : null}
             </MenuLink>
-          )}
+          ) : null}
+          <MenuLink href="/notifications" active={pathname.startsWith("/notifications")}>
+            Alerts
+            {stats.unread > 0 ? (
+              <span className="ml-auto rounded-md bg-warm/20 px-1.5 text-xs font-semibold tabular-nums text-warm">
+                {stats.unread > 99 ? "99+" : stats.unread}
+              </span>
+            ) : null}
+          </MenuLink>
         </nav>
       ) : (
         <div className="py-2 px-1 text-sm text-ink-soft">
-          Use the tabs below for Browse, Roadmap, Saved, Alerts, and Profile.
+          {isPremium
+            ? "Use the tabs below for Browse, Roadmap, Saved, Alerts, and Profile."
+            : "Use the tabs below for Browse, Roadmap, Alerts, and Profile."}
         </div>
       )}
     </>
@@ -289,7 +309,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
         title="Your account"
       >
         {label}
-        {isPremium && stats.unread > 0 ? (
+        {stats.unread > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-warm" />
         ) : null}
       </button>

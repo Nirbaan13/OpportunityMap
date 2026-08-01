@@ -1,30 +1,27 @@
 # Notifications & deadline reminders (Phase 10)
 
-Website **Alerts** inbox **and** email to the student's **registered account email**.
+Website **Alerts** inbox for all logged-in users. **Email** goes to the student's
+registered address for **premium** reminders only (when SMTP is configured).
 
 ## Reminder schedule
 
-Premium members only. Matching uses UTC calendar days until `deadline_at`.
+Matching uses UTC calendar days until `deadline_at`.
 
-| When | Who receives it | Catch-up |
-|------|-----------------|----------|
-| **~3 months** (90-day bucket) | Students with **overlapping interests** (grade + country eligibility) | Days **88–90** (one alert; deduped as 90) |
-| **30 days** bucket | Same interest-overlap audience | Days **28–30** (deduped as 30) |
-| **10 days** bucket | **Remind me** opted in | Days **2–10** (deduped as 10) |
-| **1 day** | **Remind me** opted in | Exact day 1 |
-
-Each new reminder is written to `notifications` **and** emailed to `users.email` when SMTP is configured.
+| When | Who | Channel |
+|------|-----|---------|
+| **~90 days** (88–90) | Premium + interest overlap | Inbox + email |
+| **~30 days** (28–30) | Premium + interest overlap | Inbox + email |
+| **~30 days** (28–30) | Free + **Remind me** | **Inbox only** (no email) |
+| **10 days** (2–10) | Premium + **Remind me** | Inbox + email |
+| **1 day** | Premium + **Remind me** | Inbox + email |
 
 ## Remind me
 
-Stored on `bookmarks.remind_me`.
+Stored on `bookmarks.remind_me`. Available to **all logged-in users**.
 
-- `PATCH /api/v1/bookmarks/{opportunity_id}` with `{ "remind_me": true }`  
-  Creates a bookmark if none exists.
-- Turning Remind me **off** keeps the bookmark but stops 10-day / 1-day alerts.
-- Deleting the bookmark also clears Remind me.
-
-UI: **Remind me** on opportunity detail, feed rows, and Saved.
+- `PUT /api/v1/bookmarks/{opportunity_id}/remind-me` with `{ "remind_me": true }`
+- Free: website inbox ~1 month before deadline
+- Premium: email + website at 10 days and 1 day (plus interest 90/30 when profile matches)
 
 ## In-site notifications API
 
@@ -43,7 +40,8 @@ Dedup: one row per `(user, opportunity, lead_days)` for `deadline_reminder` (cov
 
 ## Email
 
-Sent to the address used at registration (`users.email`) whenever a new deadline reminder is created.
+Premium deadline reminders are emailed to `users.email` when SMTP is configured.
+Free Remind me alerts are **inbox only** (no email).
 
 Configure in `backend/.env`:
 

@@ -25,7 +25,7 @@ export function MobileBottomNav() {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    if (!user?.is_premium || !token) {
+    if (!user || !token) {
       setUnread(0);
       return;
     }
@@ -61,6 +61,12 @@ export function MobileBottomNav() {
     : [
         { href: "/opportunities", label: "Browse", match: "/opportunities" },
         { href: "/roadmap", label: "Roadmap", match: "/roadmap" },
+        {
+          href: "/notifications",
+          label: "Alerts",
+          match: "/notifications",
+          badge: unread,
+        },
         { href: "/profile", label: "Profile", match: "/profile" },
       ];
 

@@ -269,11 +269,25 @@ export const api = {
   },
 
   setRemindMe(token: string, opportunityId: number, remindMe: boolean) {
-    return request<BookmarkItem>(`/bookmarks/${opportunityId}`, {
-      method: "PATCH",
-      token,
-      body: { remind_me: remindMe },
-    });
+    return request<{ opportunity_id: number; remind_me: boolean }>(
+      `/bookmarks/${opportunityId}/remind-me`,
+      {
+        method: "PUT",
+        token,
+        body: { remind_me: remindMe },
+      },
+    );
+  },
+
+  getRemindMe(token: string, opportunityId: number) {
+    return request<{ opportunity_id: number; remind_me: boolean }>(
+      `/bookmarks/${opportunityId}/remind-me`,
+      { token },
+    );
+  },
+
+  listRemindMeIds(token: string) {
+    return request<{ opportunity_ids: number[] }>("/bookmarks/remind-me-ids", { token });
   },
 
   setBookmarkStatus(token: string, opportunityId: number, status: "saved" | "completed") {

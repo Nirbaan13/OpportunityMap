@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 from app.services.deadline_reminder_service import (
     _days_until,
+    _free_remind_me_schedule,
     _interest_schedule,
     _remind_me_schedule,
 )
@@ -37,3 +38,12 @@ def test_interest_exact_and_catchup() -> None:
     assert _interest_schedule(28) == (30, 28)
     assert _interest_schedule(27) is None
     assert _interest_schedule(31) is None
+
+
+def test_free_remind_me_month_only() -> None:
+    assert _free_remind_me_schedule(30) == (30, 30)
+    assert _free_remind_me_schedule(28) == (30, 28)
+    assert _free_remind_me_schedule(27) is None
+    assert _free_remind_me_schedule(10) is None
+    assert _free_remind_me_schedule(1) is None
+    assert _free_remind_me_schedule(90) is None

@@ -1,14 +1,13 @@
-"""Create deadline reminders: website inbox + email to registered address.
+"""Create deadline reminders: website inbox + optional email.
 
 Lead windows:
   - Interest overlap (premium + profile eligibility):
       * ~90 days: exact day 90, or catch-up if the job missed days 88–89
       * ~30 days: exact day 30, or catch-up if the job missed days 28–29
-  - Remind me: day 10 and day 1 before deadline, plus a one-time catch-up
-    if the user opts in late (2–9 days left) and never got the 10-day alert.
-
-Each new reminder is stored in ``notifications`` and emailed to ``users.email``
-when SMTP is configured.
+      → inbox + email when SMTP is configured
+  - Remind me (premium): day 10 and day 1, plus catch-up for days 2–9
+      → inbox + email
+  - Remind me (free): ~30 days only (28–30 catch-up), inbox only — no email
 
 Run daily (cron / Task Scheduler):
 
@@ -22,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
@@ -31,12 +30,14 @@ from app.models.enums import NotificationType
 from app.models.profile import profile_fields
 from app.services.email_service import send_email
 
-# Early awareness: interest overlap (dedupe keys)
+# Early awareness: interest overlap (dedupe keys) — premium only
 INTEREST_LEAD_DAYS = (90, 30)
 # Catch-up span after a missed exact day (inclusive of the exact lead day).
 INTEREST_CATCHUP_SLACK = 2
-# Close deadlines: explicit Remind me opt-in (dedupe keys)
+# Close deadlines: premium Remind me (dedupe keys)
 REMIND_ME_LEAD_DAYS = (10, 1)
+# Free Remind me: one month out only
+FREE_REMIND_LEAD_DAYS = 30
 
 
 @dataclass(frozen=True)
@@ -63,28 +64,27 @@ def _days_until(deadline: datetime, now: datetime) -> int:
 
 
 def _interest_schedule(days_left: int) -> tuple[int, int] | None:
-    """Return ``(dedupe_lead_days, display_days)`` for interest alerts, or None.
-
-    Exact lead day or a short catch-up window so a missed Actions run still fires
-    once (same dedupe key as the exact day).
-    """
+    """Return ``(dedupe_lead_days, display_days)`` for interest alerts, or None."""
     for lead in INTEREST_LEAD_DAYS:
-        # e.g. lead=90 → days 88..90; lead=30 → days 28..30
         if lead - INTEREST_CATCHUP_SLACK <= days_left <= lead:
             return (lead, days_left)
     return None
 
 
 def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
-    """Return ``(dedupe_lead_days, display_days)`` for Remind me, or None.
-
-    - Exactly 1 day left → 1-day alert
-    - 2–10 days left → 10-day bucket (exact day 10, or late opt-in catch-up)
-    """
+    """Premium Remind me: 1-day exact, or 2–10 → 10-day bucket."""
     if days_left == 1:
         return (1, 1)
     if 2 <= days_left <= 10:
         return (10, days_left)
+    return None
+
+
+def _free_remind_me_schedule(days_left: int) -> tuple[int, int] | None:
+    """Free Remind me: ~30 days only (28–30 catch-up), deduped as 30."""
+    lead = FREE_REMIND_LEAD_DAYS
+    if lead - INTEREST_CATCHUP_SLACK <= days_left <= lead:
+        return (lead, days_left)
     return None
 
 
@@ -169,14 +169,16 @@ def _create_reminder(
     opportunity: Opportunity,
     lead_days: int,
     display_days: int | None = None,
-) -> _PendingMail | None:
+    send_email_to_user: bool = True,
+) -> tuple[bool, _PendingMail | None]:
+    """Return ``(created, pending_mail)``. ``pending_mail`` is set only when emailing."""
     if _already_sent(
         db,
         user_id=user_id,
         opportunity_id=opportunity.id,
         lead_days=lead_days,
     ):
-        return None
+        return False, None
     shown = display_days if display_days is not None else lead_days
     title, message = _build_copy(opportunity, shown)
     db.add(
@@ -190,10 +192,12 @@ def _create_reminder(
             reminder_lead_days=lead_days,
         )
     )
+    if not send_email_to_user:
+        return True, None
     subject, text_body, html_body = _build_email(
         opportunity, lead_days, title=title, message=message
     )
-    return _PendingMail(
+    return True, _PendingMail(
         to_email=to_email,
         subject=subject,
         text_body=text_body,
@@ -201,8 +205,23 @@ def _create_reminder(
     )
 
 
-def _interest_recipients(db: Session, opportunity: Opportunity) -> list[tuple[int, str]]:
-    """(user_id, email) for interest-overlap + eligibility."""
+def _premium_active_clause(now: datetime):
+    return and_(
+        User.premium_until.is_not(None),
+        User.premium_until >= now,
+    )
+
+
+def _free_tier_clause(now: datetime):
+    """Active account that is not currently premium."""
+    return and_(
+        User.is_active.is_(True),
+        or_(User.premium_until.is_(None), User.premium_until < now),
+    )
+
+
+def _interest_recipients(db: Session, opportunity: Opportunity, *, now: datetime) -> list[tuple[int, str]]:
+    """Premium users with interest overlap + eligibility."""
     field_ids = [field.id for field in opportunity.fields]
     if not field_ids:
         return []
@@ -213,8 +232,7 @@ def _interest_recipients(db: Session, opportunity: Opportunity) -> list[tuple[in
 
     conditions = [
         User.is_active.is_(True),
-        User.premium_until.is_not(None),
-        User.premium_until >= datetime.now(UTC),
+        _premium_active_clause(now),
     ]
     if grade_min is not None:
         conditions.append(Profile.grade_level >= grade_min)
@@ -239,16 +257,22 @@ def _interest_recipients(db: Session, opportunity: Opportunity) -> list[tuple[in
     return list(db.execute(stmt).all())
 
 
-def _remind_me_recipients(db: Session, opportunity_id: int) -> list[tuple[int, str]]:
+def _remind_me_recipients(
+    db: Session,
+    opportunity_id: int,
+    *,
+    now: datetime,
+    premium: bool,
+) -> list[tuple[int, str]]:
+    tier = _premium_active_clause(now) if premium else _free_tier_clause(now)
     stmt = (
         select(User.id, User.email)
         .join(Bookmark, Bookmark.user_id == User.id)
         .where(
             Bookmark.opportunity_id == opportunity_id,
             Bookmark.remind_me.is_(True),
-                User.is_active.is_(True),
-                User.premium_until.is_not(None),
-                User.premium_until >= datetime.now(UTC),
+            User.is_active.is_(True),
+            tier,
         )
     )
     return list(db.execute(stmt).all())
@@ -259,7 +283,7 @@ def run_deadline_reminders(
     *,
     now: datetime | None = None,
 ) -> ReminderRunResult:
-    """Create due inbox notifications and email each recipient's registered address."""
+    """Create due inbox notifications; email premium recipients when SMTP is set."""
     now = now or datetime.now(UTC)
     opportunities = list(
         db.scalars(
@@ -280,7 +304,8 @@ def run_deadline_reminders(
     for opportunity in opportunities:
         assert opportunity.deadline_at is not None
         days_left = _days_until(opportunity.deadline_at, now)
-        batches: list[tuple[int, int, list[tuple[int, str]]]] = []
+        # (lead_days, display_days, recipients, send_email)
+        batches: list[tuple[int, int, list[tuple[int, str]], bool]] = []
 
         interest = _interest_schedule(days_left)
         if interest is not None:
@@ -289,7 +314,8 @@ def run_deadline_reminders(
                 (
                     dedupe_lead,
                     display_days,
-                    _interest_recipients(db, opportunity),
+                    _interest_recipients(db, opportunity, now=now),
+                    True,
                 )
             )
 
@@ -300,25 +326,40 @@ def run_deadline_reminders(
                 (
                     dedupe_lead,
                     display_days,
-                    _remind_me_recipients(db, opportunity.id),
+                    _remind_me_recipients(db, opportunity.id, now=now, premium=True),
+                    True,
                 )
             )
 
-        for lead_days, display_days, recipients in batches:
+        free_remind = _free_remind_me_schedule(days_left)
+        if free_remind is not None:
+            dedupe_lead, display_days = free_remind
+            batches.append(
+                (
+                    dedupe_lead,
+                    display_days,
+                    _remind_me_recipients(db, opportunity.id, now=now, premium=False),
+                    False,
+                )
+            )
+
+        for lead_days, display_days, recipients, send_mail in batches:
             for user_id, email in recipients:
-                mail = _create_reminder(
+                was_created, mail = _create_reminder(
                     db,
                     user_id=user_id,
                     to_email=email,
                     opportunity=opportunity,
                     lead_days=lead_days,
                     display_days=display_days,
+                    send_email_to_user=send_mail,
                 )
-                if mail is None:
-                    skipped += 1
-                else:
+                if was_created:
                     created += 1
-                    pending_mail.append(mail)
+                    if mail is not None:
+                        pending_mail.append(mail)
+                else:
+                    skipped += 1
 
     db.commit()
 

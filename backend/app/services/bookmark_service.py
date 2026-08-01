@@ -113,7 +113,10 @@ def set_remind_me(
     opportunity_id: int,
     remind_me: bool,
 ) -> Bookmark:
-    """Opt in/out of 10-day and 1-day deadline reminders. Creates a bookmark if needed."""
+    """Opt in/out of deadline Remind me. Creates a bookmark if needed.
+
+    Free accounts get a ~30-day inbox alert; premium get 10/1-day inbox + email.
+    """
     opportunity = db.scalar(select(Opportunity).where(Opportunity.id == opportunity_id))
     if opportunity is None:
         raise HTTPException(

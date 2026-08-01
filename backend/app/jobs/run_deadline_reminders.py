@@ -33,9 +33,9 @@ def main() -> None:
             )
         elif result.created == 0 and result.skipped_existing == 0:
             print(
-                "Note: no reminders matched today. Interest alerts need 88–90 or "
-                "28–30 days left (premium + profile match); Remind me needs "
-                "1–10 days left + remind_me + premium."
+                "Note: no reminders matched today. Premium interest alerts need "
+                "88–90 or 28–30 days left; free Remind me needs 28–30 + remind_me; "
+                "premium Remind me needs 1–10 days left + remind_me."
             )
         renewal = run_renewal_reminders(db)
         print(

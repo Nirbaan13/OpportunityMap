@@ -130,8 +130,9 @@ export default function ProfilePage() {
           <section className="mt-10 border-t border-line pt-8">
             <h2 className="font-display text-xl font-semibold text-ink">Unlock matches & alerts</h2>
             <p className="mt-2 text-sm text-ink-soft">
-              Your profile is saved. Premium unlocks personalized matches, Saved, Remind me, and
-              deadline emails.
+              Your profile is saved. Free Remind me already sends a website alert about a
+              month before deadlines. Premium unlocks matches, Saved, email, and last-week
+              reminders.
             </p>
             <div className="mt-6">
               <PremiumPaywall title="Unlock recommendations & alerts" compact />

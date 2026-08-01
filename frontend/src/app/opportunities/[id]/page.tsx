@@ -68,11 +68,20 @@ export default function OpportunityDetailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const bookmark = await api.getBookmark(token, id);
-        if (!cancelled) {
-          setBookmarked(true);
-          setRemindMe(bookmark.remind_me);
-          setDone(bookmark.status === "completed");
+        if (user.is_premium) {
+          const bookmark = await api.getBookmark(token, id);
+          if (!cancelled) {
+            setBookmarked(true);
+            setRemindMe(bookmark.remind_me);
+            setDone(bookmark.status === "completed");
+          }
+        } else {
+          const state = await api.getRemindMe(token, id);
+          if (!cancelled) {
+            setBookmarked(false);
+            setDone(false);
+            setRemindMe(state.remind_me);
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -230,15 +239,15 @@ export default function OpportunityDetailPage() {
             remindMe={remindMe}
             onChange={(next) => {
               setRemindMe(next);
-              if (next) setBookmarked(true);
+              if (next && user?.is_premium) setBookmarked(true);
             }}
             className="inline-flex min-h-12 items-center justify-center rounded-md border border-line px-5 py-3"
           />
         </div>
         <p className="mt-3 hidden text-xs text-ink-soft sm:block">
-          Mark done counts this opportunity toward your profile field progress. Remind me
-          emails your registered address and adds a website alert 10 days and 1 day before
-          the deadline.
+          Mark done counts this opportunity toward your profile field progress. Free Remind
+          me posts a website alert about a month before the deadline. Premium adds email
+          plus 10-day and 1-day reminders.
         </p>
       </div>
 
@@ -283,7 +292,7 @@ export default function OpportunityDetailPage() {
             remindMe={remindMe}
             onChange={(next) => {
               setRemindMe(next);
-              if (next) setBookmarked(true);
+              if (next && user?.is_premium) setBookmarked(true);
             }}
             className="inline-flex min-h-10 flex-1 items-center justify-center rounded-md border border-line px-3 text-sm"
           />

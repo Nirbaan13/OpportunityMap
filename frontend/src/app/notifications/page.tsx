@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
-import { PremiumPaywall } from "@/components/PremiumPaywall";
 import { api } from "@/lib/api";
 import { ApiError, NotificationItem } from "@/types/api";
 
@@ -51,7 +50,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || !token || !user.is_premium) {
+    if (!user || !token) {
       setItems([]);
       setLoading(false);
       return;
@@ -102,26 +101,8 @@ export default function NotificationsPage() {
             <Link href="/login" className="text-accent hover:underline">
               Log in
             </Link>{" "}
-            and unlock premium for deadline alerts.
+            to see deadline alerts in your inbox.
           </p>
-        </div>
-      </main>
-    );
-  }
-
-  if (!user.is_premium) {
-    return (
-      <main className="atmosphere min-h-[calc(100vh-5rem)]">
-        <div className="mx-auto max-w-xl px-6 py-10 sm:px-10">
-          <h1 className="font-display text-3xl font-bold tracking-tight text-ink">
-            Notifications
-          </h1>
-          <p className="mt-3 text-ink-soft">
-            Deadline alerts (website + email) are a Premium feature.
-          </p>
-          <div className="mt-8">
-            <PremiumPaywall title="Unlock alerts" />
-          </div>
         </div>
       </main>
     );
@@ -139,10 +120,17 @@ export default function NotificationsPage() {
               Notifications
             </h1>
             <p className="mt-3 max-w-2xl text-ink-soft">
-              Deadline alerts appear here and are emailed to your registered address —
-              3 months and 30 days before deadline for matching interests; 10 days and 1 day
-              before deadline when you turn on Remind me.
+              {user.is_premium
+                ? "Deadline alerts appear here and are emailed to your registered address — ~3 months and 30 days for matching interests; 10 days and 1 day when Remind me is on."
+                : "Free Remind me alerts appear here about a month before the deadline (website only). Premium adds email plus earlier and last-week reminders."}
             </p>
+            {!user.is_premium ? (
+              <p className="mt-3 text-sm">
+                <Link href="/pricing" className="font-medium text-accent hover:underline">
+                  Unlock email alerts →
+                </Link>
+              </p>
+            ) : null}
           </div>
           {unreadCount > 0 ? (
             <button
@@ -163,12 +151,12 @@ export default function NotificationsPage() {
 
           {!loading && !error && total === 0 ? (
             <p className="mt-8 text-ink-soft">
-              No notifications yet. Complete your{" "}
-              <Link href="/profile" className="text-accent hover:underline">
-                profile
-              </Link>{" "}
-              for early interest alerts, and use{" "}
-              <span className="text-ink">Remind me</span> on opportunities for close deadlines.
+              No notifications yet. Turn on{" "}
+              <span className="text-ink">Remind me</span> on an opportunity to get a
+              website alert about a month before it closes
+              {user.is_premium
+                ? ", or complete your profile for earlier interest matches."
+                : "."}
             </p>
           ) : null}
 

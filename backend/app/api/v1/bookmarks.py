@@ -1,12 +1,14 @@
 from math import ceil
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.v1.opportunities import _to_summary
-from app.core.deps import require_premium
+from app.core.deps import get_current_user, require_premium
 from app.database import get_db
-from app.models import User
+from app.models import Bookmark, User
 from app.schemas.bookmark import (
     BookmarkCreate,
     BookmarkItem,
@@ -19,6 +21,19 @@ from app.services import bookmark_service
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
 
+class RemindMeState(BaseModel):
+    opportunity_id: int
+    remind_me: bool
+
+
+class RemindMeUpdate(BaseModel):
+    remind_me: bool
+
+
+class RemindMeIdList(BaseModel):
+    opportunity_ids: list[int] = Field(default_factory=list)
+
+
 def _to_item(bookmark) -> BookmarkItem:
     return BookmarkItem(
         opportunity=_to_summary(bookmark.opportunity),
@@ -27,6 +42,23 @@ def _to_item(bookmark) -> BookmarkItem:
         completed_at=bookmark.completed_at,
         created_at=bookmark.created_at,
     )
+
+
+@router.get("/remind-me-ids", response_model=RemindMeIdList)
+def list_remind_me_ids(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RemindMeIdList:
+    """Opportunity ids with Remind me on — available to free and premium accounts."""
+    ids = list(
+        db.scalars(
+            select(Bookmark.opportunity_id).where(
+                Bookmark.user_id == current_user.id,
+                Bookmark.remind_me.is_(True),
+            )
+        ).all()
+    )
+    return RemindMeIdList(opportunity_ids=ids)
 
 
 @router.get("", response_model=BookmarkListResponse)
@@ -75,6 +107,33 @@ def create_bookmark(
     return _to_item(bookmark)
 
 
+@router.get("/{opportunity_id}/remind-me", response_model=RemindMeState)
+def get_remind_me(
+    opportunity_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RemindMeState:
+    bookmark = bookmark_service.get_bookmark_optional(db, current_user, opportunity_id)
+    return RemindMeState(
+        opportunity_id=opportunity_id,
+        remind_me=bool(bookmark and bookmark.remind_me),
+    )
+
+
+@router.put("/{opportunity_id}/remind-me", response_model=RemindMeState)
+def put_remind_me(
+    opportunity_id: int,
+    payload: RemindMeUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> RemindMeState:
+    """Free: ~30-day inbox alert. Premium: 10/1-day inbox + email."""
+    bookmark = bookmark_service.set_remind_me(
+        db, current_user, opportunity_id, payload.remind_me
+    )
+    return RemindMeState(opportunity_id=opportunity_id, remind_me=bookmark.remind_me)
+
+
 @router.get("/{opportunity_id}", response_model=BookmarkItem)
 def get_bookmark(
     opportunity_id: int,
@@ -92,7 +151,7 @@ def update_bookmark(
     current_user: User = Depends(require_premium),
     db: Session = Depends(get_db),
 ) -> BookmarkItem:
-    """Update Remind me and/or saved vs completed status."""
+    """Update Remind me and/or saved vs completed status (premium Saved list)."""
     bookmark = None
     if payload.status is not None:
         bookmark = bookmark_service.set_status(
