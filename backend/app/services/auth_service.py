@@ -61,9 +61,14 @@ def authenticate_user(db: Session, email: str, password: str) -> str:
     if user.email != email:
         user.email = email
     user.last_login_at = datetime.now(UTC)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        # Schema may lag a deploy by seconds; never block login on metadata write.
+        db.rollback()
+        logger.exception("Could not persist login metadata for %s", email)
 
-    return create_access_token(user.email)
+    return create_access_token(email)
 
 
 def _hash_token(raw_token: str) -> str:

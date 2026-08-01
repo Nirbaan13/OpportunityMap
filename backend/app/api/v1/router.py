@@ -33,13 +33,22 @@ def health_check() -> dict[str, str]:
 def readiness_check() -> dict:
     """Readiness — database reachable + which optional integrations are configured.
 
+    Also ensures pending Alembic migrations are applied (idempotent).
     Returns 503 when the database cannot be reached. Never exposes secret values.
     """
     from fastapi import HTTPException, status
     from sqlalchemy import text
 
     from app.config import settings
+    from app.core.migrate import ensure_migrations
     from app.database import SessionLocal
+
+    schema = "unknown"
+    try:
+        ensure_migrations()
+        schema = "ok"
+    except Exception:
+        schema = "error"
 
     database = "error"
     try:
@@ -53,14 +62,15 @@ def readiness_check() -> dict:
         database = "error"
 
     payload = {
-        "status": "ok" if database == "ok" else "degraded",
+        "status": "ok" if database == "ok" and schema == "ok" else "degraded",
         "database": database,
+        "schema": schema,
         "razorpay_configured": settings.razorpay_enabled,
         "polar_configured": settings.polar_enabled,
         "email_configured": settings.email_enabled,
         "admin_configured": bool(settings.admin_password.strip()),
     }
-    if database != "ok":
+    if database != "ok" or schema != "ok":
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=payload,

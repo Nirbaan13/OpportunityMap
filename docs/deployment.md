@@ -92,7 +92,8 @@ alembic upgrade head
 
 5. **Deploy**.
 6. Copy the API URL, e.g. `https://opportunitymap-api.vercel.app`
-7. Test: `https://YOUR-API.vercel.app/api/v1/health` → `{"status":"ok"}`
+7. Test: `https://YOUR-API.vercel.app/api/v1/health` → `{"status":"ok"}`  
+   Also: `…/api/v1/health/ready` → `database: ok` (migrations run automatically on API cold start).
 8. Add a Razorpay webhook pointing to
    `https://YOUR-API.vercel.app/api/v1/payments/webhooks/razorpay` for captured,
    failed, refunded, and refund-processed events.
