@@ -26,6 +26,7 @@ from scraper.sources.devpost import scrape_devpost
 from scraper.sources.expanded_catalog import seed_expanded_catalog
 from scraper.sources.field_coverage_catalog import seed_field_coverage_catalog
 from scraper.sources.global_competitions import seed_global_competitions
+from scraper.sources.mun_catalog import seed_mun_catalog
 from scraper.sources.pathways_to_science import scrape_pathways_to_science
 from scraper.sources.solid_programs_catalog import seed_solid_programs_catalog
 
@@ -42,6 +43,7 @@ SOURCES = (
     "field_coverage_catalog",
     "expanded_catalog",
     "solid_programs_catalog",
+    "mun_catalog",
     "competition_sciences",
     "all",
 )
@@ -105,6 +107,8 @@ def _run_source(
         return seed_expanded_catalog(db)
     if source == "solid_programs_catalog":
         return seed_solid_programs_catalog(db)
+    if source == "mun_catalog":
+        return seed_mun_catalog(db)
     if source == "global_competitions":
         return seed_global_competitions(db)
     raise ValueError(f"Unknown source: {source}")
@@ -192,6 +196,7 @@ def main() -> None:
                 "field_coverage_catalog",
                 "expanded_catalog",
                 "solid_programs_catalog",
+                "mun_catalog",
                 "pathways_to_science",
                 "devpost",
                 "competition_sciences",
@@ -239,6 +244,7 @@ def main() -> None:
             "field_coverage_catalog",
             "expanded_catalog",
             "solid_programs_catalog",
+            "mun_catalog",
             "global_competitions",
         ):
             print("\n=== enrich_catalog_deadlines ===")

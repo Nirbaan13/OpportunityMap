@@ -43,6 +43,7 @@ python -m scraper.main --source competition_sciences --max-pages 2 --headed
 | `field_coverage_catalog` | Olympiads/research/competitions across **every interest field** (AI, chemistry, physics, social science, writing, business, …) | Curated seed, upserted each run |
 | `expanded_catalog` | Second curated worldwide catalog | Curated seed |
 | `solid_programs_catalog` | 100 solid programs with explicit country and/or 2026 deadline (non-Devpost) | Curated seed |
+| `mun_catalog` | Global + regional Model United Nations conferences | Curated seed |
 | `global_competitions` | Flagship international olympiads & ISEF | Curated seed |
 | `devpost` | Online beginner-friendly hackathons | JSON API |
 | `pathways_to_science` | High-school research internships | HTTP |
