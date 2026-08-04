@@ -153,7 +153,12 @@ GitHub → **Settings** → **Secrets** (same as migrate):
 | `DATABASE_URL` | Neon URI |
 | `SECRET_KEY` | same as API |
 | `FRONTEND_URL` | frontend Vercel URL |
-| SMTP_* | optional (email reminders) |
+| `SMTP_HOST` | `smtp.gmail.com` |
+| `SMTP_USERNAME` | `founder.opportunitymap@gmail.com` |
+| `SMTP_PASSWORD` | Gmail **App Password** for that account |
+| `SMTP_FROM` | `OpportunityMap <founder.opportunitymap@gmail.com>` |
+
+Set the same `SMTP_*` values on the **production API** host (Render/Railway) so password-reset emails work too — the daily reminder job uses GitHub secrets; the API uses its own env.
 
 Default schedule in `.github/workflows/scrape-opportunities.yml` is **weekly** (Sunday 01:00 UTC). Live network scrapers soft-fail on `--source all` so catalog maintenance still runs; GitHub Actions shows **warnings** when a live source fails. Edit the cron if you want more often, e.g.:
 

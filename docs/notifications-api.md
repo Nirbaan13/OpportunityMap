@@ -47,10 +47,11 @@ Configure in `backend/.env`:
 
 | Variable | Purpose |
 |----------|---------|
-| `SMTP_HOST` | e.g. `smtp.gmail.com` (empty = skip email) |
+| `SMTP_HOST` | `smtp.gmail.com` (empty = skip email) |
 | `SMTP_PORT` | Default `587` |
-| `SMTP_USERNAME` / `SMTP_PASSWORD` | SMTP auth |
-| `SMTP_FROM` | From header, e.g. `OpportunityMap <you@gmail.com>` |
+| `SMTP_USERNAME` | `founder.opportunitymap@gmail.com` |
+| `SMTP_PASSWORD` | Gmail **App Password** (not the normal login password) |
+| `SMTP_FROM` | `OpportunityMap <founder.opportunitymap@gmail.com>` |
 | `SMTP_USE_TLS` | Default `true` |
 | `FRONTEND_URL` | Links in the email body |
 
