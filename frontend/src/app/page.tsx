@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TUTORIAL_VIDEO_URL } from "@/lib/brand";
+
 export default function Home() {
   return (
     <main className="atmosphere relative min-h-[calc(100vh-5rem)] overflow-hidden">
@@ -54,6 +56,14 @@ export default function Home() {
           >
             View roadmap
           </Link>
+          <a
+            href={TUTORIAL_VIDEO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-ink-soft underline-offset-4 transition hover:text-accent hover:underline sm:min-h-0"
+          >
+            How to use
+          </a>
         </div>
       </section>
 
