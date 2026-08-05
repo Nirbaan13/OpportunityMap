@@ -35,6 +35,7 @@ CATALOG_SOURCES = (
     "mun_catalog",
     "dated_regional_catalog",
     "core_stem_business_catalog",
+    "field_expand_catalog",
     "global_competitions",
 )
 

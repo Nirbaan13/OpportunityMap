@@ -46,6 +46,7 @@ python -m scraper.main --source competition_sciences --max-pages 2 --headed
 | `mun_catalog` | Global + regional Model United Nations conferences | Curated seed |
 | `dated_regional_catalog` | 500 non-Devpost programs with explicit country and 2026 deadline | Curated seed |
 | `core_stem_business_catalog` | 240 programs in math, physics, chemistry, biology, business, economics | Curated seed |
+| `field_expand_catalog` | 50 more non-Devpost programs in every interest field (600 total) | Curated seed |
 | `global_competitions` | Flagship international olympiads & ISEF | Curated seed |
 | `devpost` | Online beginner-friendly hackathons | JSON API |
 | `pathways_to_science` | High-school research internships | HTTP |
