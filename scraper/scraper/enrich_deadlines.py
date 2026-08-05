@@ -33,6 +33,7 @@ CATALOG_SOURCES = (
     "expanded_catalog",
     "solid_programs_catalog",
     "mun_catalog",
+    "dated_regional_catalog",
     "global_competitions",
 )
 
