@@ -85,20 +85,15 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-const AUTO_MS = 5200;
+const AUTO_MS = 4500;
 
 export function Testimonials() {
   const labelId = useId();
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [fadeKey, setFadeKey] = useState(0);
-  const reduceMotion = useRef(false);
-
-  useEffect(() => {
-    reduceMotion.current = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-  }, []);
+  // Pause flags as refs so the interval stays alive and can resume cleanly.
+  const hoverPaused = useRef(false);
+  const focusPaused = useRef(false);
 
   const goTo = useCallback((next: number) => {
     const len = TESTIMONIALS.length;
@@ -110,13 +105,16 @@ export function Testimonials() {
   const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
 
   useEffect(() => {
-    if (paused || reduceMotion.current) return;
+    // Keep one interval for the component lifetime. Skipping ticks on pause
+    // avoids tearing down / failing to restart the timer (and ignores
+    // prefers-reduced-motion for advance — CSS already disables slide motion).
     const id = window.setInterval(() => {
+      if (hoverPaused.current || focusPaused.current) return;
       setIndex((i) => (i + 1) % TESTIMONIALS.length);
       setFadeKey((k) => k + 1);
     }, AUTO_MS);
     return () => window.clearInterval(id);
-  }, [paused]);
+  }, []);
 
   const current = TESTIMONIALS[index];
   const prev = TESTIMONIALS[(index - 1 + TESTIMONIALS.length) % TESTIMONIALS.length];
@@ -126,12 +124,18 @@ export function Testimonials() {
     <section
       className="relative z-10 border-t border-line/70 px-4 py-14 sm:px-10 sm:py-20"
       aria-labelledby={labelId}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
+      onMouseEnter={() => {
+        hoverPaused.current = true;
+      }}
+      onMouseLeave={() => {
+        hoverPaused.current = false;
+      }}
+      onFocusCapture={() => {
+        focusPaused.current = true;
+      }}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          setPaused(false);
+          focusPaused.current = false;
         }
       }}
     >
