@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from urllib.parse import urljoin, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Opportunity
@@ -208,12 +208,22 @@ def enrich_catalog_deadlines(
         "skipped": 0,
     }
 
+    now = datetime.now(UTC)
+    # Undated actives first; also retry inactive/past catalog rows so a new-cycle
+    # date on the official page can bring them back to the feed.
     stmt = (
         select(Opportunity)
-        .where(Opportunity.is_active.is_(True))
-        .where(Opportunity.deadline_at.is_(None))
         .where(Opportunity.source_name.in_(CATALOG_SOURCES))
-        .order_by(Opportunity.id.asc())
+        .where(
+            or_(
+                Opportunity.deadline_at.is_(None),
+                Opportunity.deadline_at < now,
+            )
+        )
+        .order_by(
+            Opportunity.is_active.desc(),
+            Opportunity.id.asc(),
+        )
     )
     rows = list(db.scalars(stmt).all())
     if max_items > 0:
@@ -330,6 +340,8 @@ def enrich_catalog_deadlines(
             continue
 
         row.deadline_at = found_deadline
+        # A newly discovered future deadline should put the listing back in the feed.
+        row.is_active = True
         if found_summary:
             row.description = _append_deadline_summary(row.description, found_summary)
         row.last_scraped_at = datetime.now(UTC)

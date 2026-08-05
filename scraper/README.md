@@ -52,9 +52,21 @@ python -m scraper.main --source competition_sciences --max-pages 2 --headed
 | `pathways_to_science` | High-school research internships | HTTP |
 | `competition_sciences` | ICS competitions | Playwright (often blocked; not in daily CI) |
 
+## Maintenance
+
+Deactivate expired deadlines without scraping:
+
+```bash
+python -m scraper.main --maintenance-only
+```
+
+Or from GitHub Actions → *Scrape opportunities* → Run workflow → set `maintenance_only=true`.
+
+Past deadlines are deactivated; when a catalog seed or enrichment sets a **new future** `deadline_at`, the row becomes active again. Weekly `--source all` / `--maintenance-only` runs both `deactivate_past_deadlines` and `reactivate_upcoming_deadlines`.
+
 ## Automated updates
 
-GitHub Actions runs **daily** (`scrape-opportunities.yml`):
+GitHub Actions runs **weekly** (`scrape-opportunities.yml`):
 
 1. Upserts catalog + scraped listings (same `source_name` + `external_id` → update deadlines/text)
 2. Reclassifies fields from title/description (fixes Education→Social Science hackathon misfires)

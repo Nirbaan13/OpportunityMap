@@ -27,7 +27,11 @@ _UNUSABLE_TITLE_FRAGMENTS = (
 
 
 def deactivate_past_deadlines(db: Session) -> int:
-    """Mark opportunities inactive when their deadline has passed."""
+    """Mark opportunities inactive when their deadline has passed.
+
+    Clears expired rows from the active feed so students only see open / undated
+    listings. Safe to run repeatedly (idempotent).
+    """
     now = datetime.now(UTC)
     rows = list(
         db.scalars(
@@ -44,6 +48,38 @@ def deactivate_past_deadlines(db: Session) -> int:
         db.commit()
     logger.info("Deactivated %s opportunit(ies) with past deadlines", len(rows))
     return len(rows)
+
+
+def reactivate_upcoming_deadlines(db: Session) -> int:
+    """Mark opportunities active again when they have a future deadline.
+
+    Covers catalog re-seeds and enrichment that attach a new-cycle date to a row
+    previously deactivated for an expired deadline. Unusable-title rows stay off;
+    stale cleanup still runs after this step.
+    """
+    now = datetime.now(UTC)
+    rows = list(
+        db.scalars(
+            select(Opportunity).where(
+                Opportunity.is_active.is_(False),
+                Opportunity.deadline_at.is_not(None),
+                Opportunity.deadline_at >= now,
+            )
+        ).all()
+    )
+    reactivated = 0
+    for row in rows:
+        title = (row.title or "").strip().lower()
+        if any(fragment in title for fragment in _UNUSABLE_TITLE_FRAGMENTS):
+            continue
+        row.is_active = True
+        reactivated += 1
+    if reactivated:
+        db.commit()
+    logger.info(
+        "Reactivated %s opportunit(ies) with upcoming deadlines", reactivated
+    )
+    return reactivated
 
 
 def deactivate_stale_listings(
