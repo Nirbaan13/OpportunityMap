@@ -11,17 +11,17 @@ const TESTIMONIALS: Testimonial[] = [
   {
     name: "Aarav Sharma",
     quote:
-      "This helped me build my profile without a counsellor — finally felt like I knew what to put down.",
+      "I don't have a counselor, so this actually helped me figure out what to put on my profile.",
   },
   {
     name: "Chloe Watson",
     quote:
-      "The roadmap saves time because I don't have to search for activities. I just complete them like a game.",
+      "The roadmap saves me so much time. I just knock out activities like a game instead of googling forever.",
   },
   {
     name: "Zhang Cheng",
     quote:
-      "I stopped scrolling random lists. OpportunityMap shows programs I can actually apply to.",
+      "I stopped scrolling random lists. It shows programs I can actually apply to.",
   },
   {
     name: "Ethan Miller",
@@ -31,57 +31,57 @@ const TESTIMONIALS: Testimonial[] = [
   {
     name: "Diya Patel",
     quote:
-      "Building my profile step by step made applying feel less overwhelming.",
+      "Building my profile step by step made applying feel way less overwhelming.",
   },
   {
     name: "Junwei Wang",
     quote:
-      "The roadmap is clear — next activity, next checkpoint. No more guessing what to do.",
+      "The roadmap is clear. Next activity, next checkpoint. No more guessing what to do.",
   },
   {
     name: "Zoe Smith",
     quote:
-      "Finding olympiads and research programs used to take forever. Now matches show up for me.",
+      "Finding olympiads and research programs used to take forever. Now the matches just show up.",
   },
   {
     name: "Rohan Malhotra",
     quote:
-      "I don't have a counselor at school. This filled that gap for planning what to apply to.",
+      "We don't have a counselor at school. This pretty much filled that gap for what to apply to.",
   },
   {
     name: "Liam Davis",
     quote:
-      "Watching progress tick up on the roadmap actually makes me want to finish the next step.",
+      "Watching progress tick up on the roadmap weirdly makes me want to finish the next step.",
   },
   {
     name: "Meiling Chen",
     quote:
-      "I get reminded before deadlines hit my inbox late. That alone changed how I apply.",
+      "I get reminded before deadlines sneak up on me. That alone changed how I apply.",
   },
   {
     name: "Kavya Singh",
     quote:
-      "Profile building used to feel vague. Here it's concrete — strengths, interests, then matches.",
+      "Profile building used to feel so vague. Here it's just strengths, interests, then matches.",
   },
   {
     name: "Lucas Taylor",
     quote:
-      "Hackathons and programs I would never have found on my own started showing up.",
+      "Hackathons and programs I never would've found on my own started showing up.",
   },
   {
     name: "Li Wei",
     quote:
-      "No counselor, no problem. The roadmap told me what to work on week by week.",
+      "No counselor at school, and that's fine. The roadmap told me what to work on week by week.",
   },
   {
     name: "Mason Jones",
     quote:
-      "It feels game-like — complete a stop, unlock the next. Studying for apps got way less boring.",
+      "It feels like a game. Complete a stop, unlock the next. Studying for apps got way less boring.",
   },
   {
     name: "Ananya Josh",
     quote:
-      "I used to lose track of deadlines across tabs. Now they're in one place with alerts.",
+      "I used to lose track of deadlines across like ten tabs. Now they're in one place with alerts.",
   },
 ];
 
