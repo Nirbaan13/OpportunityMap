@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type TransitionEvent,
+} from "react";
 
 type Testimonial = {
   name: string;
@@ -85,30 +93,90 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-const AUTO_MS = 3800;
+const AUTO_MS = 4000;
 const LEN = TESTIMONIALS.length;
+
+function realFromVisual(visual: number): number {
+  if (visual === 0) return LEN - 1;
+  if (visual === LEN + 1) return 0;
+  return visual - 1;
+}
 
 export function Testimonials() {
   const labelId = useId();
-  const [index, setIndex] = useState(0);
-  const [fadeKey, setFadeKey] = useState(0);
+  // visualIndex: 0 = clone of last, 1..LEN = real slides, LEN+1 = clone of first
+  const [visualIndex, setVisualIndex] = useState(1);
+  const [enableTransition, setEnableTransition] = useState(true);
   // Refs so the rAF loop always reads current pause state without restarting.
   const hoverPaused = useRef(false);
   const focusPaused = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const visualIndexRef = useRef(1);
+  const animatingRef = useRef(false);
+
+  const slides = useMemo(
+    () => [TESTIMONIALS[LEN - 1], ...TESTIMONIALS, TESTIMONIALS[0]],
+    [],
+  );
+
+  const activeReal = realFromVisual(visualIndex);
+
+  const moveTo = useCallback((next: number) => {
+    if (animatingRef.current) return;
+    animatingRef.current = true;
+    setEnableTransition(true);
+    visualIndexRef.current = next;
+    setVisualIndex(next);
+  }, []);
 
   const advance = useCallback(() => {
-    setIndex((i) => (i + 1) % LEN);
-    setFadeKey((k) => k + 1);
-  }, []);
+    moveTo(visualIndexRef.current + 1);
+  }, [moveTo]);
 
-  const goTo = useCallback((next: number) => {
-    setIndex(((next % LEN) + LEN) % LEN);
-    setFadeKey((k) => k + 1);
-  }, []);
+  const goPrev = useCallback(() => {
+    moveTo(visualIndexRef.current - 1);
+  }, [moveTo]);
 
-  const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
-  const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
+  const goNext = useCallback(() => {
+    moveTo(visualIndexRef.current + 1);
+  }, [moveTo]);
+
+  const goTo = useCallback(
+    (realIndex: number) => {
+      const clamped = ((realIndex % LEN) + LEN) % LEN;
+      moveTo(clamped + 1);
+    },
+    [moveTo],
+  );
+
+  const handleTransitionEnd = useCallback(
+    (e: TransitionEvent<HTMLDivElement>) => {
+      if (e.propertyName !== "transform") return;
+      const v = visualIndexRef.current;
+      if (v === LEN + 1) {
+        setEnableTransition(false);
+        visualIndexRef.current = 1;
+        setVisualIndex(1);
+      } else if (v === 0) {
+        setEnableTransition(false);
+        visualIndexRef.current = LEN;
+        setVisualIndex(LEN);
+      }
+      animatingRef.current = false;
+    },
+    [],
+  );
+
+  // After an instant jump off a clone, re-enable transitions on the next frame.
+  useEffect(() => {
+    if (enableTransition) return;
+    const id = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setEnableTransition(true);
+      });
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [enableTransition, visualIndex]);
 
   // Autoplay starts on mount unconditionally (ignores prefers-reduced-motion).
   // rAF + Date.now() survives Strict Mode remounts and does not rely on
@@ -120,8 +188,8 @@ export function Testimonials() {
     const tick = () => {
       const now = Date.now();
       const paused = hoverPaused.current || focusPaused.current;
-      if (paused) {
-        // Hold the deadline while paused so resume waits a full AUTO_MS.
+      if (paused || animatingRef.current) {
+        // Hold the deadline while paused / mid-slide so resume waits a full AUTO_MS.
         last = now;
       } else if (now - last >= AUTO_MS) {
         last = now;
@@ -142,7 +210,6 @@ export function Testimonials() {
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         hoverPaused.current = false;
-        // If focus left the carousel while hidden, clear that too.
         const root = rootRef.current;
         if (root && !root.contains(document.activeElement)) {
           focusPaused.current = false;
@@ -156,10 +223,6 @@ export function Testimonials() {
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
-
-  const current = TESTIMONIALS[index];
-  const prev = TESTIMONIALS[(index - 1 + LEN) % LEN];
-  const next = TESTIMONIALS[(index + 1) % LEN];
 
   return (
     <section
@@ -200,54 +263,41 @@ export function Testimonials() {
             }
           }}
         >
-          <div className="relative">
-            {/* Peek cards — desktop */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-[18%] items-center lg:flex">
-              <article
-                aria-hidden
-                className="w-full scale-90 rounded-lg border border-line/80 bg-paper/60 p-5 opacity-40 shadow-soft transition-opacity duration-300"
+          <div className="mx-auto max-w-xl lg:max-w-2xl">
+            <div className="testimonials-viewport overflow-hidden rounded-lg border border-line bg-paper shadow-soft">
+              <div
+                className={`testimonials-track flex ${
+                  enableTransition ? "testimonials-track--animate" : ""
+                }`}
+                style={{ transform: `translate3d(-${visualIndex * 100}%, 0, 0)` }}
+                onTransitionEnd={handleTransitionEnd}
               >
-                <p className="line-clamp-3 text-sm text-ink-soft">
-                  &ldquo;{prev.quote}&rdquo;
-                </p>
-                <p className="mt-3 text-xs font-semibold text-ink">{prev.name}</p>
-              </article>
-            </div>
-            <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-[18%] items-center lg:flex">
-              <article
-                aria-hidden
-                className="ml-auto w-full scale-90 rounded-lg border border-line/80 bg-paper/60 p-5 opacity-40 shadow-soft transition-opacity duration-300"
-              >
-                <p className="line-clamp-3 text-sm text-ink-soft">
-                  &ldquo;{next.quote}&rdquo;
-                </p>
-                <p className="mt-3 text-xs font-semibold text-ink">{next.name}</p>
-              </article>
-            </div>
-
-            <div className="mx-auto max-w-xl lg:max-w-2xl">
-              <article
-                key={fadeKey}
-                className="testimonials-slide rounded-lg border border-line bg-paper p-6 shadow-soft sm:p-8"
-                aria-live="polite"
-                aria-atomic="true"
-              >
-                <div
-                  aria-hidden
-                  className="mb-4 h-1 w-10 rounded-full bg-accent"
-                />
-                <blockquote className="font-display text-lg font-semibold leading-snug text-ink sm:text-xl">
-                  &ldquo;{current.quote}&rdquo;
-                </blockquote>
-                <footer className="mt-5 flex items-center justify-between gap-3">
-                  <cite className="not-italic text-sm font-semibold text-ink-soft">
-                    {current.name}
-                  </cite>
-                  <span className="text-xs tabular-nums text-ink-soft/80">
-                    {index + 1} / {LEN}
-                  </span>
-                </footer>
-              </article>
+                {slides.map((t, i) => {
+                  const isActive = i === visualIndex;
+                  return (
+                    <article
+                      key={`${t.name}-${i}`}
+                      className="testimonials-panel w-full shrink-0 grow-0 basis-full p-6 sm:p-8"
+                      aria-hidden={!isActive}
+                      aria-live={isActive ? "polite" : undefined}
+                      aria-atomic={isActive ? true : undefined}
+                    >
+                      <div
+                        aria-hidden
+                        className="mb-4 h-1 w-10 rounded-full bg-accent"
+                      />
+                      <blockquote className="font-display text-lg font-semibold leading-snug text-ink sm:text-xl">
+                        &ldquo;{t.quote}&rdquo;
+                      </blockquote>
+                      <footer className="mt-5">
+                        <cite className="not-italic text-sm font-semibold text-ink-soft">
+                          {t.name}
+                        </cite>
+                      </footer>
+                    </article>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
@@ -279,11 +329,11 @@ export function Testimonials() {
                   key={t.name}
                   type="button"
                   role="tab"
-                  aria-selected={i === index}
+                  aria-selected={i === activeReal}
                   aria-label={`Show testimonial from ${t.name}`}
                   onClick={() => goTo(i)}
                   className={`h-2 rounded-full transition-[width,background-color] duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                    i === index
+                    i === activeReal
                       ? "w-5 bg-accent"
                       : "w-2 bg-ink/20 hover:bg-ink/35"
                   }`}

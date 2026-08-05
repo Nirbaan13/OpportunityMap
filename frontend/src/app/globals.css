@@ -182,19 +182,16 @@ body {
   animation: stop-settle 0.55s ease-out both;
 }
 
-@keyframes testimonials-slide {
-  from {
-    opacity: 0;
-    transform: translateX(28px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.testimonials-track {
+  will-change: transform;
 }
 
-.testimonials-slide {
-  animation: testimonials-slide 0.35s ease-out both;
+.testimonials-track--animate {
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.testimonials-panel {
+  min-width: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -207,8 +204,11 @@ body {
   .animate-road-cover,
   .animate-road-traveler,
   .animate-road-progress-banner,
-  .animate-stop-settle,
-  .testimonials-slide {
+  .animate-stop-settle {
     animation: none;
+  }
+
+  .testimonials-track--animate {
+    transition: none;
   }
 }
