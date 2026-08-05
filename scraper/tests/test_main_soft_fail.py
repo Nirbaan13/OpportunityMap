@@ -27,5 +27,6 @@ def test_catalog_seeds_are_hard_failures_on_source_all() -> None:
         "solid_programs_catalog",
         "mun_catalog",
         "dated_regional_catalog",
+        "core_stem_business_catalog",
     ):
         assert not is_soft_fail_source("all", source)
