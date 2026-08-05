@@ -108,7 +108,7 @@ def upsert_opportunity(
     if data.eligible_countries is not None:
         existing.eligible_countries = data.eligible_countries
     existing.experience_requirements = data.experience_requirements
-    # Never revive a past-deadline listing just because a catalog re-seeded it.
+    # Past deadline → inactive; new/updated future deadline (or undated) → active again.
     existing.is_active = _is_active_for_deadline(existing.deadline_at)
     existing.last_scraped_at = now
     existing.fields = fields

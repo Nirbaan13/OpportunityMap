@@ -20,6 +20,7 @@ from scraper.maintenance import (
     deactivate_past_deadlines,
     deactivate_stale_listings,
     deactivate_unusable_titles,
+    reactivate_upcoming_deadlines,
 )
 from scraper.sources.competition_sciences import scrape_competition_sciences
 from scraper.sources.devpost import scrape_devpost
@@ -327,6 +328,12 @@ def main() -> None:
                 soft=soft_maint,
                 db=db,
             )
+            reactivated = _run_maintenance_step(
+                "reactivate_upcoming_deadlines",
+                lambda: reactivate_upcoming_deadlines(db),
+                soft=soft_maint,
+                db=db,
+            )
             junk = _run_maintenance_step(
                 "deactivate_unusable_titles",
                 lambda: deactivate_unusable_titles(db),
@@ -348,6 +355,11 @@ def main() -> None:
             if deactivated is not None:
                 print(
                     f"Maintenance: deactivated {deactivated} past-deadline opportunit(ies)"
+                )
+            if reactivated is not None:
+                print(
+                    f"Maintenance: reactivated {reactivated} upcoming-deadline "
+                    "opportunit(ies)"
                 )
             if junk is not None:
                 print(

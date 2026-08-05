@@ -62,7 +62,7 @@ python -m scraper.main --maintenance-only
 
 Or from GitHub Actions → *Scrape opportunities* → Run workflow → set `maintenance_only=true`.
 
-Catalog upserts no longer revive past-deadline rows as active; weekly `--source all` also runs `deactivate_past_deadlines`.
+Past deadlines are deactivated; when a catalog seed or enrichment sets a **new future** `deadline_at`, the row becomes active again. Weekly `--source all` / `--maintenance-only` runs both `deactivate_past_deadlines` and `reactivate_upcoming_deadlines`.
 
 ## Automated updates
 

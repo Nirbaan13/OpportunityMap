@@ -50,6 +50,38 @@ def deactivate_past_deadlines(db: Session) -> int:
     return len(rows)
 
 
+def reactivate_upcoming_deadlines(db: Session) -> int:
+    """Mark opportunities active again when they have a future deadline.
+
+    Covers catalog re-seeds and enrichment that attach a new-cycle date to a row
+    previously deactivated for an expired deadline. Unusable-title rows stay off;
+    stale cleanup still runs after this step.
+    """
+    now = datetime.now(UTC)
+    rows = list(
+        db.scalars(
+            select(Opportunity).where(
+                Opportunity.is_active.is_(False),
+                Opportunity.deadline_at.is_not(None),
+                Opportunity.deadline_at >= now,
+            )
+        ).all()
+    )
+    reactivated = 0
+    for row in rows:
+        title = (row.title or "").strip().lower()
+        if any(fragment in title for fragment in _UNUSABLE_TITLE_FRAGMENTS):
+            continue
+        row.is_active = True
+        reactivated += 1
+    if reactivated:
+        db.commit()
+    logger.info(
+        "Reactivated %s opportunit(ies) with upcoming deadlines", reactivated
+    )
+    return reactivated
+
+
 def deactivate_stale_listings(
     db: Session, *, max_age_days: int = STALE_LISTING_MAX_AGE_DAYS
 ) -> int:
