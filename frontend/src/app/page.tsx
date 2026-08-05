@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Testimonials } from "@/components/Testimonials";
 import { TUTORIAL_VIDEO_URL } from "@/lib/brand";
 
 export default function Home() {
@@ -66,6 +67,8 @@ export default function Home() {
           </a>
         </div>
       </section>
+
+      <Testimonials />
 
       <footer className="relative z-10 border-t border-line/70 px-4 py-8 sm:px-10">
         <div className="mx-auto flex max-w-5xl flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
