@@ -85,59 +85,86 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-const AUTO_MS = 4500;
+const AUTO_MS = 3800;
+const LEN = TESTIMONIALS.length;
 
 export function Testimonials() {
   const labelId = useId();
   const [index, setIndex] = useState(0);
   const [fadeKey, setFadeKey] = useState(0);
-  // Pause flags as refs so the interval stays alive and can resume cleanly.
+  // Refs so the rAF loop always reads current pause state without restarting.
   const hoverPaused = useRef(false);
   const focusPaused = useRef(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const advance = useCallback(() => {
+    setIndex((i) => (i + 1) % LEN);
+    setFadeKey((k) => k + 1);
+  }, []);
 
   const goTo = useCallback((next: number) => {
-    const len = TESTIMONIALS.length;
-    setIndex(((next % len) + len) % len);
+    setIndex(((next % LEN) + LEN) % LEN);
     setFadeKey((k) => k + 1);
   }, []);
 
   const goPrev = useCallback(() => goTo(index - 1), [goTo, index]);
   const goNext = useCallback(() => goTo(index + 1), [goTo, index]);
 
+  // Autoplay starts on mount unconditionally (ignores prefers-reduced-motion).
+  // rAF + Date.now() survives Strict Mode remounts and does not rely on
+  // setInterval firing under background-tab throttling the same way.
   useEffect(() => {
-    // Keep one interval for the component lifetime. Skipping ticks on pause
-    // avoids tearing down / failing to restart the timer (and ignores
-    // prefers-reduced-motion for advance — CSS already disables slide motion).
-    const id = window.setInterval(() => {
-      if (hoverPaused.current || focusPaused.current) return;
-      setIndex((i) => (i + 1) % TESTIMONIALS.length);
-      setFadeKey((k) => k + 1);
-    }, AUTO_MS);
-    return () => window.clearInterval(id);
+    let raf = 0;
+    let last = Date.now();
+
+    const tick = () => {
+      const now = Date.now();
+      const paused = hoverPaused.current || focusPaused.current;
+      if (paused) {
+        // Hold the deadline while paused so resume waits a full AUTO_MS.
+        last = now;
+      } else if (now - last >= AUTO_MS) {
+        last = now;
+        advance();
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [advance]);
+
+  // Safety: if pointer leaves the window or tab hides, never leave pause stuck.
+  useEffect(() => {
+    const clearHover = () => {
+      hoverPaused.current = false;
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        hoverPaused.current = false;
+        // If focus left the carousel while hidden, clear that too.
+        const root = rootRef.current;
+        if (root && !root.contains(document.activeElement)) {
+          focusPaused.current = false;
+        }
+      }
+    };
+    window.addEventListener("blur", clearHover);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", clearHover);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   const current = TESTIMONIALS[index];
-  const prev = TESTIMONIALS[(index - 1 + TESTIMONIALS.length) % TESTIMONIALS.length];
-  const next = TESTIMONIALS[(index + 1) % TESTIMONIALS.length];
+  const prev = TESTIMONIALS[(index - 1 + LEN) % LEN];
+  const next = TESTIMONIALS[(index + 1) % LEN];
 
   return (
     <section
       className="relative z-10 border-t border-line/70 px-4 py-14 sm:px-10 sm:py-20"
       aria-labelledby={labelId}
-      onMouseEnter={() => {
-        hoverPaused.current = true;
-      }}
-      onMouseLeave={() => {
-        hoverPaused.current = false;
-      }}
-      onFocusCapture={() => {
-        focusPaused.current = true;
-      }}
-      onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-          focusPaused.current = false;
-        }
-      }}
     >
       <div className="mx-auto max-w-5xl">
         <h2
@@ -152,10 +179,26 @@ export function Testimonials() {
         </p>
 
         <div
+          ref={rootRef}
           className="mt-8 sm:mt-10"
           role="region"
           aria-roledescription="carousel"
           aria-label="Student testimonials"
+          onPointerEnter={(e) => {
+            // Mouse only — touch :hover can stick and freeze autoplay forever.
+            if (e.pointerType === "mouse") hoverPaused.current = true;
+          }}
+          onPointerLeave={() => {
+            hoverPaused.current = false;
+          }}
+          onFocusCapture={() => {
+            focusPaused.current = true;
+          }}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              focusPaused.current = false;
+            }
+          }}
         >
           <div className="relative">
             {/* Peek cards — desktop */}
@@ -201,7 +244,7 @@ export function Testimonials() {
                     {current.name}
                   </cite>
                   <span className="text-xs tabular-nums text-ink-soft/80">
-                    {index + 1} / {TESTIMONIALS.length}
+                    {index + 1} / {LEN}
                   </span>
                 </footer>
               </article>

@@ -185,7 +185,7 @@ body {
 @keyframes testimonials-slide {
   from {
     opacity: 0;
-    transform: translateX(18px);
+    transform: translateX(28px);
   }
   to {
     opacity: 1;
@@ -194,7 +194,7 @@ body {
 }
 
 .testimonials-slide {
-  animation: testimonials-slide 0.45s ease-out both;
+  animation: testimonials-slide 0.35s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
