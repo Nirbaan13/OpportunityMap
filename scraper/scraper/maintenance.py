@@ -27,7 +27,11 @@ _UNUSABLE_TITLE_FRAGMENTS = (
 
 
 def deactivate_past_deadlines(db: Session) -> int:
-    """Mark opportunities inactive when their deadline has passed."""
+    """Mark opportunities inactive when their deadline has passed.
+
+    Clears expired rows from the active feed so students only see open / undated
+    listings. Safe to run repeatedly (idempotent).
+    """
     now = datetime.now(UTC)
     rows = list(
         db.scalars(

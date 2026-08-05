@@ -34,6 +34,16 @@ def _load_fields_by_slug(db: Session, slugs: list[str]) -> list[Field]:
     return list(db.scalars(select(Field).where(Field.slug.in_(slugs))).all())
 
 
+def _is_active_for_deadline(deadline_at: datetime | None) -> bool:
+    """Active unless a concrete deadline has already passed.
+
+    Undated rows stay active so staleness maintenance can retire them later.
+    """
+    if deadline_at is None:
+        return True
+    return deadline_is_upcoming(deadline_at)
+
+
 def upsert_opportunity(
     db: Session,
     data: ScrapedOpportunity,
@@ -71,7 +81,7 @@ def upsert_opportunity(
             grade_max=data.grade_max,
             eligible_countries=data.eligible_countries,
             experience_requirements=data.experience_requirements,
-            is_active=True,
+            is_active=_is_active_for_deadline(data.deadline_at),
             last_scraped_at=now,
             fields=fields,
         )
@@ -98,7 +108,8 @@ def upsert_opportunity(
     if data.eligible_countries is not None:
         existing.eligible_countries = data.eligible_countries
     existing.experience_requirements = data.experience_requirements
-    existing.is_active = True
+    # Never revive a past-deadline listing just because a catalog re-seeded it.
+    existing.is_active = _is_active_for_deadline(existing.deadline_at)
     existing.last_scraped_at = now
     existing.fields = fields
     db.commit()

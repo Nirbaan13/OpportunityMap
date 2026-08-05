@@ -29,6 +29,17 @@ def _apply_filters(
 ) -> Select[tuple[Opportunity]]:
     stmt = stmt.where(Opportunity.is_active.is_(is_active))
 
+    # Active feed should never surface expired deadlines, even if a seed briefly
+    # left is_active=True before maintenance ran.
+    if is_active:
+        now = datetime.now(UTC)
+        stmt = stmt.where(
+            or_(
+                Opportunity.deadline_at.is_(None),
+                Opportunity.deadline_at >= now,
+            )
+        )
+
     if q:
         pattern = f"%{q.strip()}%"
         stmt = stmt.where(

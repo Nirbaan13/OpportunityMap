@@ -7,6 +7,15 @@ on:
     # Devpost/hackathon deadlines (reminders fire at 90/30/10/1 days out).
     - cron: "0 1 * * 0"
   workflow_dispatch:
+    inputs:
+      maintenance_only:
+        description: "Only deactivate past deadlines / run maintenance (no scrape)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   scrape:
@@ -25,8 +34,11 @@ jobs:
           pip install -e ".[postgres]"
           # Scrapers import SQLAlchemy models from ../backend/app
           pip install -r ../backend/requirements.txt
-          playwright install --with-deps chromium
+          if [ "${{ github.event.inputs.maintenance_only }}" != "true" ]; then
+            playwright install --with-deps chromium
+          fi
       - name: Run automated scrapers (all fields)
+        if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.maintenance_only != 'true' }}
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # So `import app` resolves to backend/app
@@ -40,3 +52,11 @@ jobs:
           # date is found. Upserts preserve previously enriched future deadlines.
           # Maintenance deactivates past-deadline, unusable-title, and stale rows.
           python -m scraper.main --source all --max-items 200 --max-pages 12 --delay 1.0 --enrich-max-items 100
+      - name: Deactivate past deadlines (maintenance only)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.maintenance_only == 'true' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          python -c "import app, scraper; print('imports ok')"
+          python -m scraper.main --maintenance-only

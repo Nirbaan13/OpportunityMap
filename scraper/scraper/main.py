@@ -186,6 +186,11 @@ def main() -> None:
         help="Skip deactivating past-deadline / junk-title opportunities",
     )
     parser.add_argument(
+        "--maintenance-only",
+        action="store_true",
+        help="Skip scraping/enrichment; only run maintenance (deactivate past deadlines, etc.)",
+    )
+    parser.add_argument(
         "--skip-enrichment",
         action="store_true",
         help="Skip fetching official pages to fill missing catalog deadlines",
@@ -198,27 +203,34 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.maintenance_only and args.skip_maintenance:
+        parser.error("--maintenance-only cannot be combined with --skip-maintenance")
+
     db = SessionLocal()
     failures: list[str] = []
     soft_failures: list[str] = []
     try:
-        sources = (
-            [
-                "global_competitions",
-                "field_coverage_catalog",
-                "expanded_catalog",
-                "solid_programs_catalog",
-                "mun_catalog",
-                "dated_regional_catalog",
-                "core_stem_business_catalog",
-                "field_expand_catalog",
-                "pathways_to_science",
-                "devpost",
-                "competition_sciences",
-            ]
-            if args.source == "all"
-            else [args.source]
-        )
+        if args.maintenance_only:
+            sources = []
+            print("\n=== maintenance-only (no scrape / enrichment) ===")
+        else:
+            sources = (
+                [
+                    "global_competitions",
+                    "field_coverage_catalog",
+                    "expanded_catalog",
+                    "solid_programs_catalog",
+                    "mun_catalog",
+                    "dated_regional_catalog",
+                    "core_stem_business_catalog",
+                    "field_expand_catalog",
+                    "pathways_to_science",
+                    "devpost",
+                    "competition_sciences",
+                ]
+                if args.source == "all"
+                else [args.source]
+            )
         for source in sources:
             print(f"\n=== {source} ===")
             try:
@@ -254,16 +266,21 @@ def main() -> None:
                 except Exception:
                     logger.exception("Could not rollback after %s failure", source)
 
-        if not args.skip_enrichment and args.source in (
-            "all",
-            "field_coverage_catalog",
-            "expanded_catalog",
-            "solid_programs_catalog",
-            "mun_catalog",
-            "dated_regional_catalog",
-            "core_stem_business_catalog",
-            "field_expand_catalog",
-            "global_competitions",
+        if (
+            not args.maintenance_only
+            and not args.skip_enrichment
+            and args.source
+            in (
+                "all",
+                "field_coverage_catalog",
+                "expanded_catalog",
+                "solid_programs_catalog",
+                "mun_catalog",
+                "dated_regional_catalog",
+                "core_stem_business_catalog",
+                "field_expand_catalog",
+                "global_competitions",
+            )
         ):
             print("\n=== enrich_catalog_deadlines ===")
             try:
@@ -291,7 +308,7 @@ def main() -> None:
         if not args.skip_maintenance:
             # On --source all, isolate each step so a field-backfill bug cannot skip
             # country backfill / deadline deactivation (and vice versa).
-            soft_maint = args.source == "all"
+            soft_maint = args.source == "all" and not args.maintenance_only
             filled = _run_maintenance_step(
                 "backfill_eligible_countries",
                 lambda: backfill_eligible_countries(db),
