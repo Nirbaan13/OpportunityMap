@@ -134,19 +134,42 @@ def _build_email(
     message: str,
 ) -> tuple[str, str, str]:
     url = _opportunity_url(opportunity.id)
+    inbox = f"{settings.frontend_url.rstrip('/')}/notifications"
+    reason = (
+        "your interests match this opportunity"
+        if lead_days in INTEREST_LEAD_DAYS
+        else "you turned on Remind me for this opportunity"
+    )
     text_body = (
+        f"Hi,\n\n"
         f"{message}\n\n"
-        f"View opportunity: {url}\n"
-        f"Your alerts inbox: {settings.frontend_url.rstrip('/')}/notifications\n\n"
-        "— OpportunityMap\n"
+        f"View opportunity:\n{url}\n\n"
+        f"Your alerts inbox:\n{inbox}\n\n"
+        f"You received this because you have an OpportunityMap account and {reason}.\n"
+        f"Manage alerts anytime: {inbox}\n\n"
+        f"Thanks,\n"
+        f"OpportunityMap\n"
+        f"https://opportunitymap.info\n"
     )
     html_body = f"""\
-<html><body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #1a1a1a;">
-  <p>{message}</p>
-  <p><a href="{url}">View opportunity</a> · <a href="{settings.frontend_url.rstrip("/")}/notifications">Open alerts</a></p>
-  <p style="color:#666;font-size:12px;">You received this because you registered on OpportunityMap
-  {"and share interests with this opportunity" if lead_days in INTEREST_LEAD_DAYS else "and turned on Remind me for this opportunity"}.</p>
-</body></html>
+<html>
+  <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; color: #1c1917; max-width: 560px;">
+    <p style="margin:0 0 12px;">Hi,</p>
+    <p style="margin:0 0 16px;">{message}</p>
+    <p style="margin:0 0 16px;">
+      <a href="{url}" style="color:#0f766e;">View opportunity</a>
+      &nbsp;·&nbsp;
+      <a href="{inbox}" style="color:#0f766e;">Open alerts</a>
+    </p>
+    <p style="margin:24px 0 0; font-size:13px; color:#57534e;">
+      You received this because you have an OpportunityMap account and {reason}.
+      <a href="{inbox}" style="color:#57534e;">Manage alerts</a>
+    </p>
+    <p style="margin:16px 0 0; font-size:13px; color:#57534e;">
+      OpportunityMap · <a href="https://opportunitymap.info" style="color:#57534e;">opportunitymap.info</a>
+    </p>
+  </body>
+</html>
 """
     return title, text_body, html_body
 

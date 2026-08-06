@@ -68,16 +68,30 @@ def _build_copy(days_left: int, expires_on: str) -> tuple[str, str]:
 
 def _build_email(title: str, message: str) -> tuple[str, str]:
     url = _pricing_url()
-    text_body = f"{message}\n\nRenew: {url}\n\n— OpportunityMap\n"
-    html_body = (
-        '<html><body style="font-family: system-ui, sans-serif; line-height: 1.5; '
-        'color: #1a1a1a;">'
-        f"<p>{message}</p>"
-        f'<p><a href="{url}">Renew your membership</a></p>'
-        '<p style="color:#666;font-size:12px;">You receive this because auto-renew '
-        "reminders are on. Turn them off anytime from your profile.</p>"
-        "</body></html>"
+    inbox = f"{settings.frontend_url.rstrip('/')}/notifications"
+    text_body = (
+        f"Hi,\n\n"
+        f"{message}\n\n"
+        f"Renew:\n{url}\n\n"
+        f"Manage alerts: {inbox}\n\n"
+        f"Thanks,\nOpportunityMap\nhttps://opportunitymap.info\n"
     )
+    html_body = f"""\
+<html>
+  <body style="font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; color: #1c1917; max-width: 560px;">
+    <p style="margin:0 0 12px;">Hi,</p>
+    <p style="margin:0 0 16px;">{message}</p>
+    <p style="margin:0 0 16px;"><a href="{url}" style="color:#0f766e;">Renew your membership</a></p>
+    <p style="margin:24px 0 0; font-size:13px; color:#57534e;">
+      You receive this because auto-renew reminders are on.
+      <a href="{inbox}" style="color:#57534e;">Manage alerts</a>
+    </p>
+    <p style="margin:16px 0 0; font-size:13px; color:#57534e;">
+      OpportunityMap · <a href="https://opportunitymap.info" style="color:#57534e;">opportunitymap.info</a>
+    </p>
+  </body>
+</html>
+"""
     return text_body, html_body
 
 
