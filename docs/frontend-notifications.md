@@ -19,6 +19,7 @@ Website Alerts inbox (no mobile push). Deadline reminders also go to the registe
 - **Premium Remind me (~30 / 10 / 1):** inbox + email (catch-up windows for 28–30 and 2–10).
 - If an inbox alert was created earlier without email (e.g. free tier), a later premium run still sends the email once.
 - Guests see “Log in for Remind me”.
+- Opening **/notifications** marks all alerts read so the unread badge clears for the next visit.
 
 ## API
 

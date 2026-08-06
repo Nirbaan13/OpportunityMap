@@ -26,28 +26,6 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(currentToken: string, currentPage: number) {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await api.listNotifications(currentToken, {
-        page: currentPage,
-        page_size: PAGE_SIZE,
-      });
-      setItems(data.items);
-      setTotal(data.total);
-      setTotalPages(data.total_pages);
-      setUnreadCount(data.unread_count);
-    } catch (err) {
-      setItems([]);
-      setTotal(0);
-      setTotalPages(0);
-      setError(err instanceof ApiError ? err.message : "Could not load notifications.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
     if (authLoading) return;
     if (!user || !token) {
@@ -55,7 +33,46 @@ export default function NotificationsPage() {
       setLoading(false);
       return;
     }
-    void load(token, page);
+    let cancelled = false;
+    async function loadAndMarkRead(currentToken: string, currentPage: number) {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api.listNotifications(currentToken, {
+          page: currentPage,
+          page_size: PAGE_SIZE,
+        });
+        if (cancelled) return;
+        setItems(data.items);
+        setTotal(data.total);
+        setTotalPages(data.total_pages);
+        setUnreadCount(data.unread_count);
+
+        // Opening Alerts counts as reading — clear unread for next visit.
+        if (data.unread_count > 0) {
+          try {
+            await api.markAllNotificationsRead(currentToken);
+            if (cancelled) return;
+            setItems((prev) => prev.map((row) => ({ ...row, is_read: true })));
+            setUnreadCount(0);
+          } catch {
+            // Keep unread state if the mark-all call fails.
+          }
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setItems([]);
+        setTotal(0);
+        setTotalPages(0);
+        setError(err instanceof ApiError ? err.message : "Could not load notifications.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void loadAndMarkRead(token, page);
+    return () => {
+      cancelled = true;
+    };
   }, [authLoading, user, token, page]);
 
   async function onMarkRead(item: NotificationItem) {
@@ -121,7 +138,7 @@ export default function NotificationsPage() {
             </h1>
             <p className="mt-3 max-w-2xl text-ink-soft">
               {user.is_premium
-                ? "Deadline alerts appear here and are emailed to your registered address — ~3 months and 30 days for matching interests; 10 days and 1 day when Remind me is on."
+                ? "Deadline alerts appear here and are emailed to your registered address — matching interests get early notice; Remind me adds ~30-day, 10-day, and 1-day emails."
                 : "Free Remind me alerts appear here about a month before the deadline (website only). Premium adds email plus earlier and last-week reminders."}
             </p>
             {!user.is_premium ? (
