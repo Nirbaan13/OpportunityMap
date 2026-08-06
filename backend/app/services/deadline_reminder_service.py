@@ -5,7 +5,7 @@ Lead windows:
       * ~90 days: exact day 90, or catch-up if the job missed days 88–89
       * ~30 days: exact day 30, or catch-up if the job missed days 28–29
       → inbox + email when SMTP is configured
-  - Remind me (premium): ~30 days, day 10, and day 1 (plus catch-up)
+  - Remind me (premium): ~30 days, day 10, and day 1 (0–1 catch-up on deadline day)
       → inbox + email
   - Remind me (free): ~30 days only (28–30 catch-up), inbox only — no email
 
@@ -73,9 +73,13 @@ def _interest_schedule(days_left: int) -> tuple[int, int] | None:
 
 
 def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
-    """Premium Remind me: ~30 days, ~10 days (2–10 catch-up), or exact 1 day."""
-    if days_left == 1:
-        return (1, 1)
+    """Premium Remind me: ~30 days, ~10 days (2–10), or 1 day (0–1 catch-up).
+
+    Day 0 (deadline date) is included so a missed/late 1-day run still emails
+    on the morning of the deadline.
+    """
+    if days_left in (0, 1):
+        return (1, max(days_left, 1) if days_left >= 1 else 1)
     if 2 <= days_left <= 10:
         return (10, days_left)
     lead = FREE_REMIND_LEAD_DAYS
