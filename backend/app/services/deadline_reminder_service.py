@@ -5,7 +5,7 @@ Lead windows:
       * ~90 days: exact day 90, or catch-up if the job missed days 88–89
       * ~30 days: exact day 30, or catch-up if the job missed days 28–29
       → inbox + email when SMTP is configured
-  - Remind me (premium): day 10 and day 1, plus catch-up for days 2–9
+  - Remind me (premium): ~30 days, day 10, and day 1 (0–1 catch-up on deadline day)
       → inbox + email
   - Remind me (free): ~30 days only (28–30 catch-up), inbox only — no email
 
@@ -34,8 +34,8 @@ from app.services.email_service import send_email
 INTEREST_LEAD_DAYS = (90, 30)
 # Catch-up span after a missed exact day (inclusive of the exact lead day).
 INTEREST_CATCHUP_SLACK = 2
-# Close deadlines: premium Remind me (dedupe keys)
-REMIND_ME_LEAD_DAYS = (10, 1)
+# Close deadlines: premium Remind me (dedupe keys) — month + week + day
+REMIND_ME_LEAD_DAYS = (30, 10, 1)
 # Free Remind me: one month out only
 FREE_REMIND_LEAD_DAYS = 30
 
@@ -55,6 +55,7 @@ class _PendingMail:
     subject: str
     text_body: str
     html_body: str
+    notification_id: int | None = None
 
 
 def _days_until(deadline: datetime, now: datetime) -> int:
@@ -72,11 +73,18 @@ def _interest_schedule(days_left: int) -> tuple[int, int] | None:
 
 
 def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
-    """Premium Remind me: 1-day exact, or 2–10 → 10-day bucket."""
-    if days_left == 1:
+    """Premium Remind me: ~30 days, ~10 days (2–10), or 1 day (0–1 catch-up).
+
+    Day 0 (deadline date) is included so a missed/late 1-day run still emails
+    on the morning of the deadline.
+    """
+    if days_left in (0, 1):
         return (1, 1)
     if 2 <= days_left <= 10:
         return (10, days_left)
+    lead = FREE_REMIND_LEAD_DAYS
+    if lead - INTEREST_CATCHUP_SLACK <= days_left <= lead:
+        return (lead, days_left)
     return None
 
 
@@ -143,22 +151,42 @@ def _build_email(
     return title, text_body, html_body
 
 
-def _already_sent(
+def _find_reminder(
     db: Session,
     *,
     user_id: int,
     opportunity_id: int,
     lead_days: int,
-) -> bool:
-    existing = db.scalar(
-        select(Notification.id).where(
+) -> Notification | None:
+    return db.scalar(
+        select(Notification).where(
             Notification.user_id == user_id,
             Notification.opportunity_id == opportunity_id,
             Notification.notification_type == NotificationType.DEADLINE_REMINDER,
             Notification.reminder_lead_days == lead_days,
         )
     )
-    return existing is not None
+
+
+def _pending_mail_for(
+    *,
+    to_email: str,
+    opportunity: Opportunity,
+    lead_days: int,
+    title: str,
+    message: str,
+    notification_id: int | None,
+) -> _PendingMail:
+    subject, text_body, html_body = _build_email(
+        opportunity, lead_days, title=title, message=message
+    )
+    return _PendingMail(
+        to_email=to_email,
+        subject=subject,
+        text_body=text_body,
+        html_body=html_body,
+        notification_id=notification_id,
+    )
 
 
 def _create_reminder(
@@ -171,37 +199,53 @@ def _create_reminder(
     display_days: int | None = None,
     send_email_to_user: bool = True,
 ) -> tuple[bool, _PendingMail | None]:
-    """Return ``(created, pending_mail)``. ``pending_mail`` is set only when emailing."""
-    if _already_sent(
+    """Return ``(created, pending_mail)``.
+
+    If an inbox alert already exists without email (e.g. free Remind me, then
+    premium upgrade), queue the email without creating a duplicate notification.
+    """
+    existing = _find_reminder(
         db,
         user_id=user_id,
         opportunity_id=opportunity.id,
         lead_days=lead_days,
-    ):
-        return False, None
+    )
     shown = display_days if display_days is not None else lead_days
     title, message = _build_copy(opportunity, shown)
-    db.add(
-        Notification(
-            user_id=user_id,
-            opportunity_id=opportunity.id,
-            notification_type=NotificationType.DEADLINE_REMINDER,
-            title=title,
-            message=message,
-            is_read=False,
-            reminder_lead_days=lead_days,
-        )
+
+    if existing is not None:
+        if send_email_to_user and not existing.email_sent:
+            return False, _pending_mail_for(
+                to_email=to_email,
+                opportunity=opportunity,
+                lead_days=lead_days,
+                title=existing.title or title,
+                message=existing.message or message,
+                notification_id=existing.id,
+            )
+        return False, None
+
+    row = Notification(
+        user_id=user_id,
+        opportunity_id=opportunity.id,
+        notification_type=NotificationType.DEADLINE_REMINDER,
+        title=title,
+        message=message,
+        is_read=False,
+        reminder_lead_days=lead_days,
+        email_sent=False,
     )
+    db.add(row)
+    db.flush()
     if not send_email_to_user:
         return True, None
-    subject, text_body, html_body = _build_email(
-        opportunity, lead_days, title=title, message=message
-    )
-    return True, _PendingMail(
+    return True, _pending_mail_for(
         to_email=to_email,
-        subject=subject,
-        text_body=text_body,
-        html_body=html_body,
+        opportunity=opportunity,
+        lead_days=lead_days,
+        title=title,
+        message=message,
+        notification_id=row.id,
     )
 
 
@@ -356,9 +400,9 @@ def run_deadline_reminders(
                 )
                 if was_created:
                     created += 1
-                    if mail is not None:
-                        pending_mail.append(mail)
-                else:
+                if mail is not None:
+                    pending_mail.append(mail)
+                elif not was_created:
                     skipped += 1
 
     db.commit()
@@ -374,8 +418,15 @@ def run_deadline_reminders(
         )
         if ok:
             emails_sent += 1
+            if mail.notification_id is not None:
+                row = db.get(Notification, mail.notification_id)
+                if row is not None:
+                    row.email_sent = True
         else:
             emails_failed += 1
+
+    if emails_sent:
+        db.commit()
 
     return ReminderRunResult(
         opportunities_checked=len(opportunities),

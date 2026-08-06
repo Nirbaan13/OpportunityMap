@@ -18,12 +18,16 @@ def test_days_until_utc_calendar() -> None:
 
 def test_remind_me_exact_and_catchup() -> None:
     assert _remind_me_schedule(1) == (1, 1)
+    assert _remind_me_schedule(0) == (1, 1)
     assert _remind_me_schedule(10) == (10, 10)
     assert _remind_me_schedule(2) == (10, 2)
     assert _remind_me_schedule(9) == (10, 9)
     assert _remind_me_schedule(11) is None
-    assert _remind_me_schedule(0) is None
-    assert _remind_me_schedule(30) is None
+    assert _remind_me_schedule(-1) is None
+    assert _remind_me_schedule(30) == (30, 30)
+    assert _remind_me_schedule(28) == (30, 28)
+    assert _remind_me_schedule(27) is None
+    assert _remind_me_schedule(90) is None
 
 
 def test_interest_exact_and_catchup() -> None:
@@ -47,3 +51,9 @@ def test_free_remind_me_month_only() -> None:
     assert _free_remind_me_schedule(10) is None
     assert _free_remind_me_schedule(1) is None
     assert _free_remind_me_schedule(90) is None
+
+
+def test_premium_remind_me_includes_month_with_email_intent() -> None:
+    """Premium Remind me covers the free ~30-day window (email is sent for premium)."""
+    assert _remind_me_schedule(30) == _free_remind_me_schedule(30)
+    assert _remind_me_schedule(29) == _free_remind_me_schedule(29)
