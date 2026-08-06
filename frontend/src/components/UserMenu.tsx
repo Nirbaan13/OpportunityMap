@@ -210,7 +210,7 @@ export function UserMenu({ forceSheet = false, compactNav = false, className = "
         <div className="border-b border-line px-1 py-3 sm:px-4">
           <p className="text-sm text-ink-soft">
             Free Remind me sends a website alert about a month before deadlines. Premium
-            adds email, Saved, matches, and last-week reminders.
+            adds email for that month alert, plus Saved, matches, and last-week reminders.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <Link
