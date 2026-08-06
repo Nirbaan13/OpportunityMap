@@ -123,13 +123,17 @@ export default function BookmarksPage() {
           {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
           {!loading && !error && total === 0 ? (
-            <p className="mt-8 text-ink-soft">
-              Nothing saved yet.{" "}
-              <Link href="/opportunities" className="text-accent hover:underline">
-                Browse opportunities
-              </Link>{" "}
-              and tap Save on ones you want to revisit.
-            </p>
+            <div className="mt-8 space-y-3 text-ink-soft">
+              <p>
+                Nothing saved yet. Browse opportunities and tap Save on ones you want to
+                revisit — or turn on Remind me for deadline alerts.
+              </p>
+              <p className="text-sm">
+                <Link href="/opportunities" className="font-medium text-accent hover:underline">
+                  Browse opportunities
+                </Link>
+              </p>
+            </div>
           ) : null}
 
           <div className="mt-4 space-y-3">
@@ -137,6 +141,8 @@ export default function BookmarksPage() {
               <OpportunityRow
                 key={item.opportunity.id}
                 opportunity={item.opportunity}
+                showBookmark
+                showRemindMe
                 bookmarked
                 remindMe={item.remind_me}
                 onBookmarkChange={(next) => {

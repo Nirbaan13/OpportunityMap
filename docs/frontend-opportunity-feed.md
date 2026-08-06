@@ -7,7 +7,7 @@ Browse and filter scraped opportunities, plus a personalized “For you” feed.
 | Path | Purpose |
 |------|---------|
 | `/opportunities` | Feed with filters; Browse all / For you modes |
-| `/opportunities/[id]` | Opportunity detail + apply/source links |
+| `/opportunities/[id]` | Opportunity detail + apply/source links; server `generateMetadata` + JSON-LD for SEO/share |
 
 ## Browse all
 
@@ -25,9 +25,14 @@ Filters:
 
 ## For you
 
-Calls `GET /api/v1/matches` (JWT + profile required).
+Calls `GET /api/v1/matches` (JWT + premium + profile required).
 
-Shows match score and reasons. Unlock by creating a profile on `/profile`.
+Shows match score and reasons.
+
+## Row actions
+
+- **Remind me** — shown on every row (guests: log in; free: ~30-day inbox; premium: 10/1 + email)
+- **Save / Mark done** — premium only (not shown as unlock spam for free users)
 
 ## Run
 

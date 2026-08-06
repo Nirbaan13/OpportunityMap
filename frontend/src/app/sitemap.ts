@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
 import { SITE_URL } from "@/lib/brand";
+import { fetchOpportunitySitemapEntries } from "@/lib/server-api";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  return [
+  const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`, lastModified: now, changeFrequency: "weekly", priority: 1 },
     {
       url: `${SITE_URL}/opportunities`,
@@ -37,4 +38,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
   ];
+
+  const opportunities = await fetchOpportunitySitemapEntries();
+  const opportunityRoutes: MetadataRoute.Sitemap = opportunities.map((item) => ({
+    url: `${SITE_URL}/opportunities/${item.id}`,
+    lastModified: now,
+    changeFrequency: "weekly",
+    priority: 0.8,
+  }));
+
+  return [...staticRoutes, ...opportunityRoutes];
 }

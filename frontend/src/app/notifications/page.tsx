@@ -167,14 +167,29 @@ export default function NotificationsPage() {
           {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
           {!loading && !error && total === 0 ? (
-            <p className="mt-8 text-ink-soft">
-              No notifications yet. Turn on{" "}
-              <span className="text-ink">Remind me</span> on an opportunity to get a
-              website alert about a month before it closes
-              {user.is_premium
-                ? ", or complete your profile for earlier interest matches."
-                : "."}
-            </p>
+            <div className="mt-8 space-y-3 text-ink-soft">
+              <p>
+                No notifications yet. Browse opportunities and turn on{" "}
+                <span className="text-ink">Remind me</span> for a website alert about a
+                month before a deadline
+                {user.is_premium
+                  ? ", or finish your profile for earlier interest matches."
+                  : " (no email on the free plan)."}
+              </p>
+              <p className="text-sm">
+                <Link href="/opportunities" className="font-medium text-accent hover:underline">
+                  Browse opportunities
+                </Link>
+                {!user.is_premium ? (
+                  <>
+                    {" · "}
+                    <Link href="/pricing" className="font-medium text-accent hover:underline">
+                      Unlock email alerts
+                    </Link>
+                  </>
+                ) : null}
+              </p>
+            </div>
           ) : null}
 
           <ul className="mt-4 divide-y divide-line border-t border-line">

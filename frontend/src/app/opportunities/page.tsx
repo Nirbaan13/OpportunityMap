@@ -296,8 +296,8 @@ export default function OpportunitiesPage() {
           Opportunities
         </h1>
         <p className="mt-2 hidden max-w-2xl text-ink-soft sm:mt-3 sm:block">
-          Browse openings by type and interest, or switch to personalized matches once your
-          profile is set.
+          Browse openings by type and interest. Turn on free Remind me for a website alert
+          about a month before a deadline — Premium unlocks For you matches and Saved.
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-2 border-b border-line pb-4 sm:mt-8 sm:flex sm:flex-wrap sm:gap-2">
@@ -327,7 +327,11 @@ export default function OpportunitiesPage() {
             title={
               canUseMatches
                 ? "Ranked for your profile"
-                : "Create a profile to unlock personalized matches"
+                : !user
+                  ? "Log in and unlock Premium for personalized matches"
+                  : !user.is_premium
+                    ? "Premium unlocks For you matches"
+                    : "Finish your profile to unlock ranked matches"
             }
           >
             For you
@@ -339,14 +343,15 @@ export default function OpportunitiesPage() {
                   <Link href="/login" className="text-accent hover:underline">
                     Log in
                   </Link>{" "}
-                  and unlock premium for personalized ranking.
+                  for free Remind me, or unlock Premium for personalized ranking.
                 </>
               ) : !user.is_premium ? (
                 <>
-                  <Link href="/roadmap" className="text-accent hover:underline">
-                    View roadmap
+                  Free Remind me works on any listing.{" "}
+                  <Link href="/pricing" className="text-accent hover:underline">
+                    Unlock Premium
                   </Link>{" "}
-                  for matches, profile, and alerts.
+                  for For you matches and Saved.
                 </>
               ) : (
                 <>
@@ -541,11 +546,47 @@ export default function OpportunitiesPage() {
           {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
           {!loading && !error && total === 0 ? (
-            <p className="mt-8 text-ink-soft">
-              No opportunities match these filters
-              {field ? ` for this field` : ""}. Try another field, clear filters, or turn off
-              “Open deadlines only” to include year-round listings.
-            </p>
+            <div className="mt-8 space-y-3 text-ink-soft">
+              <p>
+                No opportunities match these filters
+                {field ? " for this field" : ""}.
+              </p>
+              <p className="text-sm">
+                Try another field, clear filters, or turn off “Open deadlines only” to
+                include year-round listings.
+              </p>
+              <p className="text-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftQ("");
+                    setQ("");
+                    setOpportunityType("");
+                    setField("");
+                    setOpenOnly(false);
+                    setEligibleForMe(false);
+                    setPage(1);
+                  }}
+                  className="font-medium text-accent hover:underline"
+                >
+                  Clear all filters
+                </button>
+                {" · "}
+                {user ? (
+                  <>
+                    Turn on <span className="text-ink">Remind me</span> on listings you like
+                    for a free website alert about a month before the deadline.
+                  </>
+                ) : (
+                  <>
+                    <Link href="/register" className="font-medium text-accent hover:underline">
+                      Create a free account
+                    </Link>{" "}
+                    to use Remind me on opportunities you care about.
+                  </>
+                )}
+              </p>
+            </div>
           ) : null}
 
           <div className="mt-4 space-y-3 sm:mt-4 sm:space-y-0">
@@ -558,18 +599,24 @@ export default function OpportunitiesPage() {
                     sharedFields={item.shared_fields}
                     reasons={item.reasons}
                     showBookmark={canPersonalize}
-                    showRemindMe={canPersonalize}
+                    showRemindMe
                     showDone={canPersonalize}
                     bookmarked={bookmarkedIds.has(item.opportunity.id)}
                     remindMe={remindMeIds.has(item.opportunity.id)}
                     done={doneIds.has(item.opportunity.id)}
-                    onBookmarkChange={(next) =>
-                      setOpportunityBookmarked(item.opportunity.id, next)
+                    onBookmarkChange={
+                      canPersonalize
+                        ? (next) => setOpportunityBookmarked(item.opportunity.id, next)
+                        : undefined
                     }
                     onRemindMeChange={(next) =>
                       setOpportunityRemindMe(item.opportunity.id, next)
                     }
-                    onDoneChange={(next) => setOpportunityDone(item.opportunity.id, next)}
+                    onDoneChange={
+                      canPersonalize
+                        ? (next) => setOpportunityDone(item.opportunity.id, next)
+                        : undefined
+                    }
                   />
                 ))
               : items.map((item) => (
@@ -577,14 +624,20 @@ export default function OpportunitiesPage() {
                     key={item.id}
                     opportunity={item}
                     showBookmark={canPersonalize}
-                    showRemindMe={canPersonalize}
+                    showRemindMe
                     showDone={canPersonalize}
                     bookmarked={bookmarkedIds.has(item.id)}
                     remindMe={remindMeIds.has(item.id)}
                     done={doneIds.has(item.id)}
-                    onBookmarkChange={(next) => setOpportunityBookmarked(item.id, next)}
+                    onBookmarkChange={
+                      canPersonalize
+                        ? (next) => setOpportunityBookmarked(item.id, next)
+                        : undefined
+                    }
                     onRemindMeChange={(next) => setOpportunityRemindMe(item.id, next)}
-                    onDoneChange={(next) => setOpportunityDone(item.id, next)}
+                    onDoneChange={
+                      canPersonalize ? (next) => setOpportunityDone(item.id, next) : undefined
+                    }
                   />
                 ))}
           </div>
