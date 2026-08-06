@@ -79,7 +79,7 @@ def _remind_me_schedule(days_left: int) -> tuple[int, int] | None:
     on the morning of the deadline.
     """
     if days_left in (0, 1):
-        return (1, max(days_left, 1) if days_left >= 1 else 1)
+        return (1, 1)
     if 2 <= days_left <= 10:
         return (10, days_left)
     lead = FREE_REMIND_LEAD_DAYS
