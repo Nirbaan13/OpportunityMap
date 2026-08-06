@@ -141,13 +141,23 @@ export default function NotificationsPage() {
                 ? "Deadline alerts appear here and are emailed to your registered address — matching interests get early notice; Remind me adds ~30-day, 10-day, and 1-day emails."
                 : "Free Remind me alerts appear here about a month before the deadline (website only). Premium adds email plus earlier and last-week reminders."}
             </p>
-            {!user.is_premium ? (
+            {user.is_premium ? (
+              <p
+                className="mt-4 max-w-2xl border-l-2 border-warm/70 pl-3 text-sm text-ink"
+                role="status"
+              >
+                Reminder emails come from{" "}
+                <span className="font-medium">founder.opportunitymap@gmail.com</span>.
+                If you don’t see one in your inbox, check Spam or Promotions and mark it
+                as not spam so future alerts land correctly.
+              </p>
+            ) : (
               <p className="mt-3 text-sm">
                 <Link href="/pricing" className="font-medium text-accent hover:underline">
                   Unlock email alerts →
                 </Link>
               </p>
-            ) : null}
+            )}
           </div>
           {unreadCount > 0 ? (
             <button
