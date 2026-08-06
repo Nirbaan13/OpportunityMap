@@ -7,7 +7,7 @@ export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://opportunitymap.info"
 ).replace(/\/$/, "");
 
-/** Instagram or YouTube tutorial — replace with your video URL when ready. */
+/** Instagram tutorial reel for “How to use”. */
 export const TUTORIAL_VIDEO_URL =
   process.env.NEXT_PUBLIC_TUTORIAL_VIDEO_URL ||
-  "https://www.youtube.com/watch?v=REPLACE_ME";
+  "https://www.instagram.com/reel/DbsvrYmPWzS/";
